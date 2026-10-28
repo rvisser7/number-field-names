@@ -33,8 +33,8 @@ When a field has names from more than one family, the family higher up in the ta
 | Cyclotomic | `\Q(\zeta_{n})` | script ready (`generate_cyclotomic.py`), degree 3 to 47 |
 | Real cyclotomic | `\Q(\zeta_{n})^+` | script ready (`generate_cyclotomic.py`), degree 3 to 47 |
 | Multiquadratic | `\Q(\sqrt{a}, \sqrt{b}, \dots)` | todo |
-| Imprimitive quartic | `\Q(\sqrt{A + B\sqrt{D}})` | todo |
-| Pure, degree $n \geq 3$ | `\Q(\sqrt[n]{m})` | script ready (`generate_pure.py`), needs a run with LMFDB access |
+| Pure, degree $n \geq 3$ | `\Q(\sqrt[n]{m})` | script ready (`generate_pure.py`) |
+| Imprimitive quartic (C4, D4) | `\Q(\sqrt{A + B\sqrt{D}})` | script ready (`generate_imprimitive_quartic.py`) |
 | Composita | e.g. `\Q(\sqrt{n}, \sqrt[3]{m})` | todo |
 | Kummer | `\Q(\zeta_n, \sqrt[n]{a_1}, \dots)` | todo |
 
@@ -47,5 +47,5 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
-python3 -m unittest discover tests     # run the tests (the pure field tests need cypari2)
+python3 -m unittest discover tests     # run the tests (most tests need cypari2)
 ```

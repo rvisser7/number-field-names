@@ -52,8 +52,8 @@ class TestLabelOrder(unittest.TestCase):
 class TestMerge(unittest.TestCase):
     def test_family_rank(self):
         names = [r"\Q", r"\Q(\sqrt{-3})", r"\Q(\zeta_{8})", r"\Q(\zeta_{7})^+", r"\Q(\sqrt[4]{-1})",
-                 r"\Q(\sqrt{2 + \sqrt{2}})"]
-        self.assertEqual([family_rank(s) for s in names], [0, 1, 2, 3, 4, 5])
+                 r"\Q(\sqrt{2 + \sqrt{5}})", r"\Q(\sqrt{1 + 2i})", r"\Q(\sqrt{2}, \sqrt{3})"]
+        self.assertEqual([family_rank(s) for s in names], [0, 1, 2, 3, 4, 5, 5, 6])
 
     def test_merge(self):
         with tempfile.TemporaryDirectory() as d:

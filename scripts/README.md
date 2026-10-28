@@ -1,7 +1,7 @@
 # Scripts
 
 Small Python utilities for working with the data in `../data/`. They need only the standard library,
-except for the pure and cyclotomic field scripts, which need PARI through cypari2:
+except for the scripts that compute fields, which need PARI through cypari2:
 either `pip install cypari2`, or run them with `sage -python` since SageMath ships cypari2.
 
 - `nf_names.py`: shared helpers (reading, writing and merging data files, LMFDB sort order, quadratic names).
@@ -27,3 +27,10 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   (degree 1 and 2 fields keep their rational or quadratic names, as on the LMFDB).
 - `generate_cyclotomic.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_cyclotomic.py --max-degree 47 --source db`.
+- `imprimitive_quartic.py`: the quartic fields $\mathbb{Q}(\sqrt{A + B\sqrt{D}})$ with $|A|, |B|, |D| \leq N$ and $D$ squarefree,
+  leaving out the biquadratic (V4) ones. Their quadratic subfield $\mathbb{Q}(\sqrt{D})$ is unique, and $(A, B)$ is chosen
+  with $B > 0$ and smallest $\max(|A|, |B|)$, then $|B|$, then $|A|$, then $A > 0$. If that gives $A = 0$ the field is
+  named as a pure quartic $\mathbb{Q}(\sqrt[4]{B^2 D})$, the same name `generate_pure.py` gives. $D = -1$ is written $i$,
+  as in the LMFDB, e.g. `\Q(\sqrt{1 + 2i})`.
+- `generate_imprimitive_quartic.py`: looks these up in the LMFDB and merges them into `data/degree4.txt`, e.g.
+  `python3 scripts/generate_imprimitive_quartic.py --bound 50 --source db`.

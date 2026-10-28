@@ -72,6 +72,7 @@ FAMILIES = [
     ("cyclotomic", re.compile(r"^\\Q\(\\zeta_\{\d+\}\)$")),
     ("real cyclotomic", re.compile(r"^\\Q\(\\zeta_\{\d+\}\)\^\+$")),
     ("pure", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+\}\)$")),
+    ("imprimitive quartic", re.compile(r"^\\Q\(\\sqrt\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
 ]
 
 
