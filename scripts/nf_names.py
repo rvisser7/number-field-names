@@ -24,8 +24,15 @@ def data_path(degree, data_dir=DATA_DIR):
 
 
 def label_key(label):
-    """Sort key for LMFDB number field labels n.r.D.i: numeric in each part."""
-    return tuple(int(x) for x in label.split("."))
+    """Sort key for an LMFDB number field label n.r.D.i, matching the LMFDB's default
+    order: degree, |disc|, disc sign, iso number. The sign is (-1)^s with s = (n - r)/2
+    complex places, so e.g. 2.0.8.1 comes before 2.2.8.1. Fields of the same degree,
+    |disc|, sign and iso number but different signature (e.g. 4.0.D.i and 4.4.D.i)
+    have no LMFDB order; we break the tie by r.
+    """
+    n, r, D, i = (int(x) for x in label.split("."))
+    sign = -1 if (n - r) // 2 % 2 else 1
+    return (n, D, sign, i, r)
 
 
 def read_data(path):

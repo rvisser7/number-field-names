@@ -28,9 +28,22 @@ class TestQuadratic(unittest.TestCase):
 
 
 class TestLabelOrder(unittest.TestCase):
-    def test_numeric(self):
-        self.assertLess(label_key("2.0.8.1"), label_key("2.0.11.1"))
-        self.assertLess(label_key("2.0.1000.1"), label_key("2.2.5.1"))
+    def test_lmfdb_order(self):
+        # The order the LMFDB lists quadratic fields in.
+        labels = ["2.0.3.1", "2.0.4.1", "2.2.5.1", "2.0.7.1", "2.0.8.1", "2.2.8.1",
+                  "2.0.11.1", "2.2.12.1", "2.2.13.1", "2.0.15.1", "2.2.17.1", "2.0.19.1",
+                  "2.0.20.1", "2.2.21.1", "2.0.23.1", "2.0.24.1", "2.2.24.1", "2.2.28.1",
+                  "2.2.29.1", "2.0.31.1", "2.2.33.1", "2.0.35.1", "2.2.37.1", "2.0.39.1",
+                  "2.0.40.1", "2.2.40.1", "2.2.41.1", "2.0.43.1", "2.2.44.1", "2.0.47.1",
+                  "2.0.51.1"]
+        self.assertEqual(sorted(reversed(labels), key=label_key), labels)
+
+    def test_sign(self):
+        # disc sign is (-1)^s: 3.1 is negative, 3.3 positive; 4.2 negative, 4.0 and 4.4 positive.
+        self.assertLess(label_key("3.1.49.1"), label_key("3.3.49.1"))
+        self.assertLess(label_key("4.2.400.1"), label_key("4.0.400.1"))
+        self.assertLess(label_key("4.0.400.1"), label_key("4.4.400.1"))
+        self.assertLess(label_key("2.2.5.1"), label_key("2.0.7.1"))
 
 
 if __name__ == "__main__":
