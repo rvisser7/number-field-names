@@ -1,0 +1,95 @@
+"""Shared helpers for the pretty name data files.
+
+A data file data/degree<n>.txt looks like
+
+    label|pretty_name
+    text|text
+
+    2.0.3.1|\\Q(\\sqrt{-3})
+    2.0.4.1|\\Q(\\sqrt{-1})
+"""
+
+import os
+
+HEADER = "label|pretty_name"
+TYPES = "text|text"
+
+# Resolve data/ from this file, not from the cwd.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(REPO_ROOT, "data")
+
+
+def data_path(degree, data_dir=DATA_DIR):
+    return os.path.join(data_dir, f"degree{degree}.txt")
+
+
+def label_key(label):
+    """Sort key for LMFDB number field labels n.r.D.i: numeric in each part."""
+    return tuple(int(x) for x in label.split("."))
+
+
+def read_data(path):
+    """Return a list of (label, pretty_name) rows from a data file."""
+    with open(path) as f:
+        lines = f.read().split("\n")
+    if lines[:3] != [HEADER, TYPES, ""]:
+        raise ValueError(f"{path}: expected header {HEADER!r}, {TYPES!r} and a blank line")
+    rows = []
+    for n, ln in enumerate(lines[3:], start=4):
+        if ln == "":
+            continue
+        cells = ln.split("|")
+        if len(cells) != 2:
+            raise ValueError(f"{path}:{n}: expected 2 columns, got {len(cells)}: {ln!r}")
+        rows.append((cells[0], cells[1]))
+    return rows
+
+
+def write_data(path, rows):
+    """Write (label, pretty_name) rows to a data file, sorted by label."""
+    rows = sorted(rows, key=lambda row: label_key(row[0]))
+    with open(path, "w", newline="\n") as f:
+        f.write(HEADER + "\n" + TYPES + "\n\n")
+        for label, name in rows:
+            f.write(f"{label}|{name}\n")
+
+
+def is_squarefree(n):
+    n = abs(n)
+    p = 2
+    while p * p <= n:
+        if n % (p * p) == 0:
+            return False
+        if n % p == 0:
+            n //= p
+        p += 1
+    return True
+
+
+def is_fundamental_discriminant(D):
+    if D in (0, 1):
+        return False
+    if D % 4 == 1:
+        return is_squarefree(D)
+    if D % 4 == 0:
+        return (D // 4) % 4 in (2, 3) and is_squarefree(D // 4)
+    return False
+
+
+def quadratic_label(D):
+    """LMFDB label of Q(sqrt(D)) for a fundamental discriminant D."""
+    return f"2.{2 if D > 0 else 0}.{abs(D)}.1"
+
+
+def quadratic_name(label):
+    """Pretty name of a quadratic field from its label, matching LMFDB's field_pretty.
+
+    Note 2.0.4.1 is \\Q(\\sqrt{-1}), not \\Q(i).
+    """
+    n, r, disc, _ = label.split(".")
+    if n != "2" or r not in ("0", "2"):
+        raise ValueError(f"not a quadratic field label: {label}")
+    D = int(disc) if r == "2" else -int(disc)
+    if not is_fundamental_discriminant(D):
+        raise ValueError(f"not a fundamental discriminant: {label}")
+    return r"\Q(\sqrt{%d})" % (D if D % 4 else D // 4)
