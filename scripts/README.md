@@ -14,7 +14,9 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   (so $\mathbb{Q}(\sqrt[3]{4})$ and $\mathbb{Q}(\sqrt[3]{-2})$ are both named `\Q(\sqrt[3]{2})`).
 - `lmfdb_lookup.py`: finds the LMFDB label of a field, from the fields with the same degree and $|\mathrm{disc}|$,
   by matching the polredabs polynomial, falling back to an isomorphism test (`nfisisom`). Uses either the public
-  LMFDB API or a database connection (`from lmfdb import db`, or lmfdb-lite).
+  LMFDB API or a database connection (`from lmfdb import db`, or lmfdb-lite). The database is faster and
+  more reliable; to get lmfdb-lite inside Sage:
+  `sage -pip install -U "lmfdb-lite[pgbinary] @ git+https://github.com/roed314/lmfdb-lite.git"`.
 - `generate_pure.py`: puts the two together and merges the names into `data/degree<n>.txt`, keeping any name
   already there unless `--replace` is given, and lists pure fields that are not in the LMFDB. For example
   `python3 scripts/generate_pure.py --degrees 3-10 --bound 100 --source db`.

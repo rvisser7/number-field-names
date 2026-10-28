@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 
 API_URL = "https://www.lmfdb.org/api/nf_fields/"
+# The default Python-urllib user agent can be refused by the server.
+USER_AGENT = "number-field-names (https://github.com/LMFDB/lmfdb/issues/6991)"
 
 
 def api_source(degree, disc_abs, pause=0.2):
@@ -23,8 +25,18 @@ def api_source(degree, disc_abs, pause=0.2):
         query = urllib.parse.urlencode({
             "degree": f"i{degree}", "disc_abs": f"i{disc_abs}",
             "_fields": "label,coeffs", "_format": "json", "_offset": offset})
-        with urllib.request.urlopen(f"{API_URL}?{query}") as resp:
-            data = json.load(resp)["data"]
+        url = f"{API_URL}?{query}"
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT,
+                                                   "Accept": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8", "replace")
+            ctype = resp.headers.get("Content-Type", "")
+        try:
+            data = json.loads(body)["data"]
+        except (ValueError, KeyError):
+            raise SystemExit(f"The LMFDB API did not return JSON data for\n  {url}\n"
+                             f"Content-Type: {ctype}\nStart of the response:\n{body[:500]}\n\n"
+                             "Try --source db instead (needs lmfdb-lite, see scripts/README.md).")
         rows += data
         time.sleep(pause)  # be gentle with the LMFDB server
         if len(data) < 100:  # the API returns at most 100 rows per page
