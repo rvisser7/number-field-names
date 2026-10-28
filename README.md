@@ -31,9 +31,8 @@ A field only appears in a file if we have a name for it.
 | Cyclotomic | `\Q(\zeta_n)` | todo |
 | Real cyclotomic | `\Q(\zeta_n)^+` | todo |
 | Multiquadratic | `\Q(\sqrt{a}, \sqrt{b}, \dots)` | todo |
-| Pure cubic | `\Q(\sqrt[3]{n})` | todo |
 | Imprimitive quartic | `\Q(\sqrt{A + B\sqrt{D}})` | todo |
-| Pure, degree $m \geq 4$ | `\Q(\sqrt[m]{n})` | todo |
+| Pure, degree $n \geq 3$ | `\Q(\sqrt[n]{m})` | script ready (`generate_pure.py`), needs a run with LMFDB access |
 | Composita | e.g. `\Q(\sqrt{n}, \sqrt[3]{m})` | todo |
 | Kummer | `\Q(\zeta_n, \sqrt[n]{a_1}, \dots)` | todo |
 
@@ -46,5 +45,5 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
-python3 -m unittest discover tests     # run the tests
+python3 -m unittest discover tests     # run the tests (the pure field tests need cypari2)
 ```
