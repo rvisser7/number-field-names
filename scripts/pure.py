@@ -34,12 +34,16 @@ def pure_name(n, m):
     return r"\Q(\sqrt[%d]{%d})" % (n, m)
 
 
-def pure_fields(n, bound):
-    """Return the distinct pure fields Q(\\sqrt[n]{m}) with |m| <= bound, as PureFields."""
+def pure_fields(n, bound, progress=None):
+    """Return the distinct pure fields Q(\\sqrt[n]{m}) with |m| <= bound, as PureFields.
+
+    If given, progress(done, total, nfields) is called after each m.
+    """
     fields = {}
-    for m in sorted(range(-bound, bound + 1), key=lambda m: (abs(m), -m)):
-        if m == 0:
-            continue
+    ms = [m for m in sorted(range(-bound, bound + 1), key=lambda m: (abs(m), -m)) if m != 0]
+    for i, m in enumerate(ms, start=1):
+        if progress:
+            progress(i, len(ms), len(fields))
         f = pari(f"x^{n} - ({m})")
         if not pari.polisirreducible(f):
             continue

@@ -16,6 +16,7 @@ Usage:
 import argparse
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lmfdb_lookup import api_source, db_source, find_label
@@ -30,6 +31,41 @@ def parse_degrees(s):
         lo, _, hi = part.partition("-")
         out += range(int(lo), int(hi or lo) + 1)
     return out
+
+
+class Progress:
+    """Progress on stderr: one line rewritten in place on a terminal, otherwise
+    a line every `every` seconds (so log files stay readable)."""
+
+    def __init__(self, every=30):
+        self.tty = sys.stderr.isatty()
+        self.every = 0.2 if self.tty else every
+        self.last = 0
+
+    def start(self, what):
+        self.what = what
+        self.t0 = time.time()
+        self.last = 0
+
+    def __call__(self, done, total, extra=""):
+        now = time.time()
+        if now - self.last < self.every and done < total:
+            return
+        self.last = now
+        elapsed = now - self.t0
+        eta = elapsed / done * (total - done) if done else 0
+        line = (f"{self.what}: {done}/{total} ({100 * done // total}%){extra}, "
+                f"{fmt_time(elapsed)} elapsed, ~{fmt_time(eta)} left")
+        if self.tty:
+            print("\r\033[K" + line, end="\n" if done == total else "", file=sys.stderr, flush=True)
+        else:
+            print(line, file=sys.stderr, flush=True)
+
+
+def fmt_time(seconds):
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    return f"{h}h{m:02d}m{s:02d}s" if h else f"{m}m{s:02d}s" if m else f"{s}s"
 
 
 def merge(path, new_rows, replace):
@@ -59,20 +95,28 @@ def main():
     parser.add_argument("--source", choices=["api", "db"], default="api")
     parser.add_argument("--replace", action="store_true",
                         help="overwrite names already in the data files")
+    parser.add_argument("--progress-every", type=float, default=30, metavar="SECONDS",
+                        help="when not on a terminal, how often to print progress (default 30)")
     args = parser.parse_args()
     source = api_source if args.source == "api" else db_source()
 
+    progress = Progress(every=args.progress_every)
     missing = []
     for n in parse_degrees(args.degrees):
         if n < 3:
             sys.exit("pure fields start at degree 3 (degree 2 is generate_degree2.py)")
+        progress.start(f"degree {n}, computing fields")
+        fields = pure_fields(n, args.bound,
+                             lambda i, total, k: progress(i, total, f", {k} fields so far"))
+        progress.start(f"degree {n}, LMFDB lookups")
         found = {}
-        for K in pure_fields(n, args.bound):
+        for i, K in enumerate(fields, start=1):
             label = find_label(K.coeffs, K.r1, source(n, abs(K.disc)), is_isomorphic)
             if label is None:
                 missing.append(K)
             else:
                 found[label] = K.name
+            progress(i, len(fields), f", {len(found)} found")
         added, replaced, kept = merge(data_path(n), found, args.replace)
         print(f"degree {n}: {len(found)} pure fields in the LMFDB; "
               f"{added} added, {replaced} replaced, {kept} kept existing name")
