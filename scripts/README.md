@@ -1,7 +1,8 @@
 # Scripts
 
 Small Python utilities for working with the data in `../data/`. They need only the standard library,
-except for the pure field scripts, which need PARI through cypari2 (`pip install cypari2`).
+except for the pure field scripts, which need PARI through cypari2:
+either `pip install cypari2`, or run them with `sage -python` since SageMath ships cypari2.
 
 - `nf_names.py`: shared helpers (reading and writing data files, LMFDB sort order, quadratic names).
 - `check_data.py`: checks every `data/degree<n>.txt` is well formed: right header, one row per label,

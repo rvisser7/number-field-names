@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 try:
     from pure import is_isomorphic, pure_fields
     from lmfdb_lookup import find_label
-except ImportError:  # cypari2 not installed
+except SystemExit:  # cypari2 not installed
     pure_fields = None
 
 

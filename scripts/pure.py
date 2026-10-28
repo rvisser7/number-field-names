@@ -9,7 +9,10 @@ preferring m > 0, so the name is the same however the field was reached.
 
 from dataclasses import dataclass
 
-import cypari2
+try:
+    import cypari2
+except ImportError:
+    raise SystemExit("cypari2 is needed: pip install cypari2, or run this script with sage -python")
 
 pari = cypari2.Pari()
 

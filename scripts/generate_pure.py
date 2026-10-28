@@ -6,7 +6,7 @@ looks up their labels in the LMFDB, and merges the names into data/degree<n>.txt
 Fields already named in the data file keep their name unless --replace is given.
 Fields that are not in the LMFDB are listed at the end.
 
-Needs cypari2 (pip install cypari2).
+Needs cypari2: pip install cypari2, or run with sage -python.
 
 Usage:
     python3 scripts/generate_pure.py --degrees 3-10 --bound 100            # LMFDB API
