@@ -3,7 +3,10 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
-from nf_names import is_fundamental_discriminant, label_key, quadratic_name
+import tempfile
+
+from nf_names import (family_rank, is_fundamental_discriminant, label_key, merge_data,
+                      quadratic_name, read_data, write_data)
 
 
 class TestQuadratic(unittest.TestCase):
@@ -44,6 +47,30 @@ class TestLabelOrder(unittest.TestCase):
         self.assertLess(label_key("4.2.400.1"), label_key("4.0.400.1"))
         self.assertLess(label_key("4.0.400.1"), label_key("4.4.400.1"))
         self.assertLess(label_key("2.2.5.1"), label_key("2.0.7.1"))
+
+
+class TestMerge(unittest.TestCase):
+    def test_family_rank(self):
+        names = [r"\Q", r"\Q(\sqrt{-3})", r"\Q(\zeta_{8})", r"\Q(\zeta_{7})^+", r"\Q(\sqrt[4]{-1})",
+                 r"\Q(\sqrt{2 + \sqrt{2}})"]
+        self.assertEqual([family_rank(s) for s in names], [0, 1, 2, 3, 4, 5])
+
+    def test_merge(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "degree4.txt")
+            write_data(path, [("4.0.256.1", r"\Q(\sqrt[4]{-1})"), ("4.4.1125.1", "custom")])
+            # Cyclotomic names win over pure names and over names of no known family...
+            self.assertEqual(merge_data(path, {"4.0.256.1": r"\Q(\zeta_{8})",
+                                               "4.4.1125.1": r"\Q(\zeta_{15})^+",
+                                               "4.0.125.1": r"\Q(\zeta_{5})"}), (1, 2, 0))
+            self.assertEqual(dict(read_data(path)), {"4.0.125.1": r"\Q(\zeta_{5})",
+                                                     "4.0.256.1": r"\Q(\zeta_{8})",
+                                                     "4.4.1125.1": r"\Q(\zeta_{15})^+"})
+            # ...but a pure name does not replace a cyclotomic one,
+            self.assertEqual(merge_data(path, {"4.0.256.1": r"\Q(\sqrt[4]{-1})"}), (0, 0, 1))
+            # unless asked to.
+            self.assertEqual(merge_data(path, {"4.0.256.1": r"\Q(\sqrt[4]{-1})"}, replace=True),
+                             (0, 1, 0))
 
 
 if __name__ == "__main__":

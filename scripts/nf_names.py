@@ -10,6 +10,7 @@ A data file data/degree<n>.txt looks like
 """
 
 import os
+import re
 
 HEADER = "label|pretty_name"
 TYPES = "text|text"
@@ -59,6 +60,51 @@ def write_data(path, rows):
         f.write(HEADER + "\n" + TYPES + "\n\n")
         for label, name in rows:
             f.write(f"{label}|{name}\n")
+
+
+# When a field has names from several families, the earlier family wins. This follows the
+# order of the cases in the LMFDB's field_pretty, e.g. 4.0.256.1 is \Q(\zeta_{8}), not
+# \Q(\sqrt[4]{-1}), and 2.0.3.1 is \Q(\sqrt{-3}), not \Q(\zeta_{3}).
+# Names that match none of these rank last, so add each new family to this list.
+FAMILIES = [
+    ("rational", re.compile(r"^\\Q$")),
+    ("quadratic", re.compile(r"^\\Q\(\\sqrt\{-?\d+\}\)$")),
+    ("cyclotomic", re.compile(r"^\\Q\(\\zeta_\{\d+\}\)$")),
+    ("real cyclotomic", re.compile(r"^\\Q\(\\zeta_\{\d+\}\)\^\+$")),
+    ("pure", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+\}\)$")),
+]
+
+
+def family_rank(name):
+    """Position of the name's family in FAMILIES (lower wins); unknown names rank last."""
+    for i, (_, rx) in enumerate(FAMILIES):
+        if rx.match(name):
+            return i
+    return len(FAMILIES)
+
+
+def merge_data(path, new_rows, replace=False):
+    """Merge {label: name} into the data file at path, and return (added, replaced, kept).
+
+    A label already in the file keeps its name, unless the new name is from a family that
+    wins over it (see FAMILIES) or replace is True.
+    """
+    rows = dict(read_data(path)) if os.path.exists(path) else {}
+    added = replaced = kept = 0
+    for label, name in new_rows.items():
+        old = rows.get(label)
+        if old is None:
+            added += 1
+        elif old == name:
+            continue
+        elif replace or family_rank(name) < family_rank(old):
+            replaced += 1
+        else:
+            kept += 1
+            continue
+        rows[label] = name
+    write_data(path, rows.items())
+    return added, replaced, kept
 
 
 def is_squarefree(n):

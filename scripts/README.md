@@ -1,10 +1,13 @@
 # Scripts
 
 Small Python utilities for working with the data in `../data/`. They need only the standard library,
-except for the pure field scripts, which need PARI through cypari2:
+except for the pure and cyclotomic field scripts, which need PARI through cypari2:
 either `pip install cypari2`, or run them with `sage -python` since SageMath ships cypari2.
 
-- `nf_names.py`: shared helpers (reading and writing data files, LMFDB sort order, quadratic names).
+- `nf_names.py`: shared helpers (reading, writing and merging data files, LMFDB sort order, quadratic names).
+  `FAMILIES` sets which name wins when a field is in more than one family.
+- `pari_fields.py`: PARI setup, and the `Field` record (name, polredabs polynomial, discriminant, signature).
+- `progress.py`: the progress line the long-running scripts print on stderr.
 - `check_data.py`: checks every `data/degree<n>.txt` is well formed: right header, one row per label,
   labels of the right degree, in LMFDB order, no duplicates, and balanced brackets in each name.
 - `generate_degree2.py`: writes `data/degree2.txt`, either for all fundamental discriminants up to
@@ -18,5 +21,9 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   more reliable; to get lmfdb-lite inside Sage:
   `sage -pip install -U "lmfdb-lite[pgbinary] @ git+https://github.com/roed314/lmfdb-lite.git"`.
 - `generate_pure.py`: puts the two together and merges the names into `data/degree<n>.txt`, keeping any name
-  already there unless `--replace` is given, and lists pure fields that are not in the LMFDB. For example
+  already there (unless pure names win over it, or `--replace` is given), and lists pure fields that are not in the LMFDB. For example
   `python3 scripts/generate_pure.py --degrees 3-10 --bound 100 --source db`.
+- `cyclotomic.py`: the fields $\mathbb{Q}(\zeta_n)$ and $\mathbb{Q}(\zeta_n)^+$ of degree 3 to $D$, for $n \not\equiv 2 \bmod 4$
+  (degree 1 and 2 fields keep their rational or quadratic names, as on the LMFDB).
+- `generate_cyclotomic.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_cyclotomic.py --max-degree 47 --source db`.

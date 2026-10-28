@@ -74,3 +74,21 @@ def find_label(coeffs, r1, candidates, is_isomorphic):
         if is_isomorphic(c, coeffs):
             return label
     return None
+
+
+def label_fields(fields, source, is_isomorphic, progress=None):
+    """Look up each Field (see pari_fields.py) in the LMFDB.
+
+    Returns ({label: name} for the fields found, [fields not found]).
+    If given, progress(done, total, extra) is called after each field.
+    """
+    found, missing = {}, []
+    for i, K in enumerate(fields, start=1):
+        label = find_label(K.coeffs, K.r1, source(K.degree, abs(K.disc)), is_isomorphic)
+        if label is None:
+            missing.append(K)
+        else:
+            found[label] = K.name
+        if progress:
+            progress(i, len(fields), f", {len(found)} found")
+    return found, missing

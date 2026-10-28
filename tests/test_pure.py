@@ -14,14 +14,13 @@ except SystemExit:  # cypari2 not installed
 class TestPure(unittest.TestCase):
     def test_cubic(self):
         # 4 ~ 2, 9 ~ 3 and -m ~ m; 1 and 8 give reducible polynomials.
-        fields = {K.m: K for K in pure_fields(3, 10)}
-        self.assertEqual(sorted(fields), [2, 3, 5, 6, 7, 10])
-        K = fields[2]
-        self.assertEqual(K.name, r"\Q(\sqrt[3]{2})")
-        self.assertEqual((K.coeffs, K.disc, K.r1), ((-2, 0, 0, 1), -108, 1))
+        fields = {K.name: K for K in pure_fields(3, 10)}
+        self.assertEqual(sorted(fields), [r"\Q(\sqrt[3]{%d})" % m for m in [10, 2, 3, 5, 6, 7]])
+        K = fields[r"\Q(\sqrt[3]{2})"]
+        self.assertEqual((K.coeffs, K.disc, K.r1, K.degree), ((-2, 0, 0, 1), -108, 1, 3))
 
     def test_quartic(self):
-        fields = {K.m: K for K in pure_fields(4, 4)}
+        fields = {int(K.name.split("{")[1].split("}")[0]): K for K in pure_fields(4, 4)}
         # x^4 - 1, x^4 - 4 and x^4 + 4 are reducible.
         self.assertEqual(sorted(fields), [-3, -2, -1, 2, 3])
         self.assertEqual((fields[-1].disc, fields[-1].r1), (256, 0))    # Q(zeta_8)

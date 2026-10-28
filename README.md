@@ -21,6 +21,8 @@ text|text
 
 Names are stored without the surrounding `\(` `\)` and use the LMFDB's macros (such as `\Q`).
 A field only appears in a file if we have a name for it.
+When a field has names from more than one family, the family higher up in the table below wins
+(as in the LMFDB's `field_pretty`), e.g. `4.0.256.1` is `\Q(\zeta_{8})` rather than `\Q(\sqrt[4]{-1})`.
 
 ## Families
 
@@ -28,8 +30,8 @@ A field only appears in a file if we have a name for it.
 |---|---|---|
 | Rationals | `\Q` | done |
 | Quadratic | `\Q(\sqrt{D})` | read off the label; discriminants up to 1000 in absolute value so far |
-| Cyclotomic | `\Q(\zeta_n)` | todo |
-| Real cyclotomic | `\Q(\zeta_n)^+` | todo |
+| Cyclotomic | `\Q(\zeta_{n})` | script ready (`generate_cyclotomic.py`), degree 3 to 47 |
+| Real cyclotomic | `\Q(\zeta_{n})^+` | script ready (`generate_cyclotomic.py`), degree 3 to 47 |
 | Multiquadratic | `\Q(\sqrt{a}, \sqrt{b}, \dots)` | todo |
 | Imprimitive quartic | `\Q(\sqrt{A + B\sqrt{D}})` | todo |
 | Pure, degree $n \geq 3$ | `\Q(\sqrt[n]{m})` | script ready (`generate_pure.py`), needs a run with LMFDB access |
