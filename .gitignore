@@ -7,3 +7,6 @@ __pycache__/
 # Left behind by merge_data in nf_names.py
 data/.merge.lock
 data/*.tmp.*
+
+# Written by scripts/run_jobs.py
+logs/

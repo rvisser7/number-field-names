@@ -61,3 +61,7 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   `python3 scripts/generate_named_composita.py --max-degree 16 --bound 20 --source db`.
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name.
+- `run_jobs.py`: runs the jobs in a jobs file (one `generate_*.py` script and its arguments per line, like `../jobs.txt`)
+  as separate processes, at most `--parallel` at a time, each logging to `logs/<n>-<script>.log`, e.g.
+  `sage -python scripts/run_jobs.py jobs.txt --parallel 4 --source db`. `--source` is added to each job that does not
+  give one, and `--dry-run` only lists the jobs.

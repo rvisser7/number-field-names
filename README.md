@@ -51,3 +51,11 @@ python3 scripts/check_data.py          # validate every data/degree<n>.txt
 python3 -m unittest discover tests     # run the tests (most tests need cypari2)
 python3 scripts/coverage.py --db       # how many fields are named, per degree and family
 ```
+
+To run many generators at once, list them in a jobs file (see [`jobs.txt`](jobs.txt)) and run
+
+```
+sage -python scripts/run_jobs.py jobs.txt --parallel 4 --source db
+```
+
+Each job runs in its own process and writes to `logs/`.
