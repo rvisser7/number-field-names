@@ -374,6 +374,8 @@ def _simplest_abd(u, v, D, n=2):
                 zs = [z0 * t for t in unit_powers]
             else:
                 zs = [z0 * eps ** (n * k) for k in _unit_range(z0, eps, T, n)]
+                if n % 2:  # -1 = (-1)^n is an n-th power too (whatever the sign of eps)
+                    zs += [-z for z in zs]
             for z in zs:
                 res = ab(z)
                 if res and res[0] != 0:
