@@ -84,6 +84,8 @@ FAMILIES = [
     ("kummer", re.compile(r"^\\Q\((i, \\sqrt\[4\]|\\zeta_\{\d+\}, \\sqrt\[\d+\])\{-?\d+\}\)$")),
     ("radical compositum",
      re.compile(r"^\\Q\((i|\\sqrt\{-?\d+\}|\\sqrt\[\d+\]\{-?\d+\}), \\sqrt\[\d+\]\{-?\d+\}\)$")),
+    # Anything else of the form \Q(g_1, g_2), as written by named_composita.py
+    ("compositum", re.compile(r"^\\Q\(.+, .+\)$")),
 ]
 
 

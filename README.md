@@ -37,6 +37,7 @@ When a field has names from more than one family, the family higher up in the ta
 | Imprimitive quartic (C4, D4) | `\Q(\sqrt{A + B\sqrt{D}})` | script ready (`generate_imprimitive_quartic.py`) |
 | Kummer | `\Q(\zeta_{n}, \sqrt[n]{a})`, e.g. `\Q(\zeta_{3}, \sqrt[3]{2})`, `\Q(i, \sqrt[4]{2})` | script ready (`generate_kummer.py`) |
 | Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
+| Composita of named fields | `\Q(g_1, g_2)`, e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
 
 Every name other than those read off the label should be certified by checking that the
 polynomial it describes defines the same field as the LMFDB polynomial (e.g. with PARI's `nfisisom`).
@@ -48,4 +49,5 @@ See [`scripts/README.md`](scripts/README.md).
 ```
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
 python3 -m unittest discover tests     # run the tests (most tests need cypari2)
+python3 scripts/coverage.py --db       # how many fields are named, per degree and family
 ```

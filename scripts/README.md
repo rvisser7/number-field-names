@@ -51,3 +51,13 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_kummer.py`, `generate_composita.py`: look these up in the LMFDB and merge them into the data files, e.g.
   `python3 scripts/generate_kummer.py --n 3,4,6 --bound 100 --source db` and
   `python3 scripts/generate_composita.py --pairs 2x3 --bound 50 --source db`.
+- `named_composita.py`: composita $K_1 K_2$ of two fields we already name, where $K_1$ is cyclotomic or quadratic
+  (so Galois, and the compositum is well defined) and $K_2$ is cyclotomic, quadratic, pure or an imprimitive quartic
+  $\mathbb{Q}(\sqrt{A + B\sqrt{D}})$. Only linearly disjoint pairs are kept, named `\Q(g_1, g_2)` from the two generators, e.g.
+  `\Q(\zeta_{5}, \sqrt{2})` or `\Q(i, \sqrt[4]{3})`. Pairs another family covers are skipped (two quadratics, two cyclotomics,
+  quadratic with odd degree pure), and a field reached several ways keeps the first name (cyclotomic blocks first, smallest
+  degree first, then quadratics by $|d|$, then pure, then quartic). Other families' names win over these.
+- `generate_named_composita.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_named_composita.py --max-degree 16 --bound 20 --source db`.
+- `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
+  to show what fraction has a name.
