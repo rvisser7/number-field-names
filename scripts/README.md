@@ -8,6 +8,7 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   `FAMILIES` sets which name wins when a field is in more than one family.
 - `pari_fields.py`: PARI setup, and the `Field` record (name, polredabs polynomial, discriminant, signature).
 - `progress.py`: the progress line the long-running scripts print on stderr.
+- `pipeline.py`: the shared end of the newer `generate_*.py` scripts (LMFDB lookup, merge, summary).
 - `check_data.py`: checks every `data/degree<n>.txt` is well formed: right header, one row per label,
   labels of the right degree, in LMFDB order, no duplicates, and balanced brackets in each name.
 - `generate_degree2.py`: writes `data/degree2.txt`, either for all fundamental discriminants up to
@@ -41,3 +42,12 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_multiquadratic.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_multiquadratic.py --degrees 4 --bound 200 --source db`. The number of fields grows fast with
   the degree (bound 200, 40, 20, 15 give about 27000, 12000, 3200, 500 fields in degree 4, 8, 16, 32).
+- `radical.py`: Kummer fields $\mathbb{Q}(\zeta_n, \sqrt[n]{a})$ and radical composita $\mathbb{Q}(\sqrt[m]{a}, \sqrt[n]{b})$ with
+  $\gcd(m, n) = 1$. Both are found by running over small $a$ (and $b$), building the compositum with PARI and grouping
+  by polredabs polynomial; a field reached several ways keeps the first name, i.e. the smallest $n$ (or pair), then the
+  smallest $|a|$, positive first. $\zeta_n$ is written as for cyclotomic fields ($\zeta_{3}$ for $n = 6$, $i$ for $n = 4$).
+  Kummer fields with $\zeta_n$ already in $\mathbb{Q}(\sqrt[n]{a})$ are left out, and where the families overlap the
+  simpler name wins: `\Q(\sqrt[6]{-3})` over `\Q(\zeta_{3}, \sqrt[3]{3})` over `\Q(\sqrt{-3}, \sqrt[3]{3})`.
+- `generate_kummer.py`, `generate_composita.py`: look these up in the LMFDB and merge them into the data files, e.g.
+  `python3 scripts/generate_kummer.py --n 3,4,6 --bound 100 --source db` and
+  `python3 scripts/generate_composita.py --pairs 2x3 --bound 50 --source db`.

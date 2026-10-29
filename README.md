@@ -35,8 +35,8 @@ When a field has names from more than one family, the family higher up in the ta
 | Multiquadratic | `\Q(\sqrt{a}, \sqrt{b}, \dots)` | script ready (`generate_multiquadratic.py`), degree 4 to 32 |
 | Pure, degree $n \geq 3$ | `\Q(\sqrt[n]{m})` | script ready (`generate_pure.py`) |
 | Imprimitive quartic (C4, D4) | `\Q(\sqrt{A + B\sqrt{D}})` | script ready (`generate_imprimitive_quartic.py`) |
-| Composita | e.g. `\Q(\sqrt{n}, \sqrt[3]{m})` | todo |
-| Kummer | `\Q(\zeta_n, \sqrt[n]{a_1}, \dots)` | todo |
+| Kummer | `\Q(\zeta_{n}, \sqrt[n]{a})`, e.g. `\Q(\zeta_{3}, \sqrt[3]{2})`, `\Q(i, \sqrt[4]{2})` | script ready (`generate_kummer.py`) |
+| Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
 
 Every name other than those read off the label should be certified by checking that the
 polynomial it describes defines the same field as the LMFDB polynomial (e.g. with PARI's `nfisisom`).
