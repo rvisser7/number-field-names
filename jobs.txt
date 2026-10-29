@@ -3,6 +3,26 @@
 # The bounds are a starting point; raise them as time allows. Put the slowest jobs first, so they start straight away.
 # Avoid running the same family on the same degree in parallel
 
+
+# Naming the LMFDB fields directly (see name_lmfdb_fields.py). This is complete, with no bound,
+# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields and
+# nested radicals, and finds composita from named subfields, so it can replace most of the jobs above. 
+# (split big degrees with --shard )
+name_lmfdb_fields.py --degrees 3 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 4 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 5 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 6 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 7 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 8 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 9 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 10 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 11 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 12 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 13 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 14 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 15 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 16 --only-unnamed --batch 100
+
 # Multiquadratic Q(sqrt(d1), ..., sqrt(dr)), one job per degree
 generate_multiquadratic.py --degrees 4 --bound 300   # Deg 4,  bound 100 takes ~26min;
 generate_multiquadratic.py --degrees 8 --bound 50    # Deg 8,  bound 100 takes ~17hours!
@@ -37,6 +57,18 @@ generate_nested_radical.py --n 5 --bound 20
 generate_nested_radical.py --n 6 --bound 20
 generate_nested_radical.py --n 7 --bound 15
 generate_nested_radical.py --n 8 --bound 15
+generate_nested_radical.py --n 9 --bound 15
+generate_nested_radical.py --n 10 --bound 15
+generate_nested_radical.py --n 11 --bound 15
+generate_nested_radical.py --n 12 --bound 15
+generate_nested_radical.py --n 13 --bound 15
+generate_nested_radical.py --n 14 --bound 15
+generate_nested_radical.py --n 15 --bound 15
+generate_nested_radical.py --n 16 --bound 15
+generate_nested_radical.py --n 17 --bound 15
+generate_nested_radical.py --n 18 --bound 15
+generate_nested_radical.py --n 19 --bound 15
+generate_nested_radical.py --n 20 --bound 15
 
 
 # Cyclotomic Q(zeta_n) and real cyclotomic Q(zeta_n)^+
@@ -50,6 +82,8 @@ generate_kummer.py --n 3 --bound 20000      # N=3, bound 1000 takes ~3min
 generate_kummer.py --n 4 --bound 20000      # N=4, bound 1000 takes ~7min
 generate_kummer.py --n 5 --bound 10000
 generate_kummer.py --n 6 --bound 10000      # N=6, bound 1000 takes ~8min
+generate_kummer.py --n 7 --bound 10000
+generate_kummer.py --n 8 --bound 10000
 
 # Compositum fields
 generate_composita.py --pairs 2x3 --bound 150     # Pair 2x3, bound 100 takes ~42min
@@ -59,12 +93,3 @@ generate_composita.py --pairs 3x4 --bound 50
 generate_composita.py --pairs 3x5 --bound 50   
   
 generate_named_composita.py --max-degree 16 --bound 30   # --max-degree 16 --bound 20 took ~30min
-
-# Naming the LMFDB fields directly (see name_lmfdb_fields.py). This is complete, with no bound,
-# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields and
-# nested radicals, and finds composita from named subfields, so it can replace most of the jobs
-# above. Uncomment to use; split big degrees with --shard.
-# name_lmfdb_fields.py --degrees 3-5
-# name_lmfdb_fields.py --degrees 6 --shard 0/2
-# name_lmfdb_fields.py --degrees 6 --shard 1/2
-# name_lmfdb_fields.py --degrees 7-12 --max-disc 10^12
