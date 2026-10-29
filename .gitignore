@@ -3,3 +3,7 @@ __pycache__/
 
 *.patch
 *.diff
+
+# Left behind by merge_data in nf_names.py
+data/.merge.lock
+data/*.tmp.*

@@ -9,6 +9,7 @@ A data file data/degree<n>.txt looks like
     2.0.4.1|\\Q(\\sqrt{-1})
 """
 
+import fcntl
 import os
 import re
 
@@ -54,12 +55,18 @@ def read_data(path):
 
 
 def write_data(path, rows):
-    """Write (label, pretty_name) rows to a data file, sorted by label."""
+    """Write (label, pretty_name) rows to a data file, sorted by label.
+
+    The rows go to a temporary file that then replaces the data file, so a reader never
+    sees a half-written file.
+    """
     rows = sorted(rows, key=lambda row: label_key(row[0]))
-    with open(path, "w", newline="\n") as f:
+    tmp = f"{path}.tmp.{os.getpid()}"
+    with open(tmp, "w", newline="\n") as f:
         f.write(HEADER + "\n" + TYPES + "\n\n")
         for label, name in rows:
             f.write(f"{label}|{name}\n")
+    os.replace(tmp, path)
 
 
 # When a field has names from several families, the earlier family wins. This follows the
@@ -93,7 +100,16 @@ def merge_data(path, new_rows, replace=False):
 
     A label already in the file keeps its name, unless the new name is from a family that
     wins over it (see FAMILIES) or replace is True.
+
+    The read-merge-write holds a lock on the data directory, so several scripts can run
+    at once without losing each other's rows.
     """
+    with open(os.path.join(os.path.dirname(os.path.abspath(path)), ".merge.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)  # released when the file is closed
+        return _merge_data(path, new_rows, replace)
+
+
+def _merge_data(path, new_rows, replace):
     rows = dict(read_data(path)) if os.path.exists(path) else {}
     added = replaced = kept = 0
     for label, name in new_rows.items():
