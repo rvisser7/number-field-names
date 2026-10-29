@@ -52,5 +52,10 @@ generate_kummer.py --n 5 --bound 10000
 generate_kummer.py --n 6 --bound 10000      # N=6, bound 1000 takes ~8min
 
 # Compositum fields
-generate_composita.py --pairs 2x3 --bound 50
-generate_named_composita.py --max-degree 16 --bound 20
+generate_composita.py --pairs 2x3 --bound 150     # Pair 2x3, bound 100 takes ~42min
+generate_composita.py --pairs 2x5 --bound 50     
+generate_composita.py --pairs 2x7 --bound 50     
+generate_composita.py --pairs 3x4 --bound 50     
+generate_composita.py --pairs 3x5 --bound 50   
+  
+generate_named_composita.py --max-degree 16 --bound 30   # --max-degree 16 --bound 20 took ~30min
