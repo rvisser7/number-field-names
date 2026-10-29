@@ -55,12 +55,11 @@ class TestImprimitiveQuartic(unittest.TestCase):
         for K in self.fields:
             self.assertEqual(len(pari.nfsubfields(pari.Polrev(list(K.coeffs)), 2)), 1, K.name)
 
-    def test_pure_names_agree(self):
-        # When the simplest choice has A = 0, the name is the one generate_pure.py gives.
-        pure = {K.coeffs: K.name for K in pure_fields(4, 8 ** 3)}
-        for K in self.fields:
-            if r"\sqrt[4]" in K.name:
-                self.assertEqual(pure[K.coeffs], K.name)
+    def test_no_pure_fields(self):
+        # Pure quartics are left to generate_pure.py, also Q(\sqrt[4]{12}) = Q(\sqrt{3 + 2\sqrt{3}}).
+        pure = {K.coeffs for K in pure_fields(4, 8 ** 3)}
+        self.assertIn(polredabs_coeffs(pari("x^4 - 12")), pure)
+        self.assertFalse(pure & {K.coeffs for K in self.fields})
 
 
 if __name__ == "__main__":

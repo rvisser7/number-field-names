@@ -21,29 +21,42 @@ without their bounds:
     quadratic subfield. The A + B\\sqrt{D} that give K are the integral elements of
     beta L^{*2} (and of its conjugate). Each has ideal C^2 R, for a fixed squarefree R and C in
     a fixed ideal class, so running over the C of small norm in that class and over the units
-    finds the simplest (A, B), as in imprimitive_quartic.py.
+    finds the simplest (A, B), as in imprimitive_quartic.py. Pure fields are left out (they
+    keep their pure name).
+  * nested radical Q(\\sqrt[n]{a + b\\sqrt{d}}), n >= 3: for each quadratic subfield L, the beta with
+    K = L(\\sqrt[n]{beta}) lie in the S-units of L modulo n-th powers (S: the primes above the
+    ramified primes and n, and enough primes for the class group). Being an n-th power at the
+    degree 1 primes of K is a linear condition mod n on the exponents; the survivors are checked
+    with nffactor and nfroots, and each beta simplified as for the quartics. Pure fields are left
+    out, and fields with more than MAX_NESTED_CANDIDATES candidates are skipped.
   * radical compositum, compositum: pairs of subfields of K with names (cyclotomic, quadratic,
     pure, imprimitive quartic) whose compositum is K, with the rules of radical.py and
-    named_composita.py.
-
-Not done yet: nested radicals Q(\\sqrt[n]{a + b\\sqrt{d}}) with n >= 3 (generate_nested_radical.py).
+    named_composita.py. Also names with three or more generators, from a Galois named subfield
+    (quadratic, cyclotomic, multiquadratic, Kummer) and another named subfield, e.g.
+    Q(i, \\sqrt[3]{3}, \\sqrt[4]{2}); fewer generators win.
 """
 
 import itertools
 import math
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 
 from cyclotomic import conductors, cyclotomic_name, real_cyclotomic_name
 from imprimitive_quartic import quartic_name
-from multiquadratic import multiquadratic_name, order_key, span
-from nf_names import name_key
+from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol
+from nested_radical import nested_name
+from nf_names import generator_key, name_key, radicand_size
 from pari_fields import is_isomorphic, pari, polredabs_coeffs
 from pure import pure_name
 from radical import compositum_name, kummer_name, root_symbol, zeta_symbol
 
 FAMILY_TESTS = ["cyclotomic", "real cyclotomic", "multiquadratic", "pure", "kummer",
-                "imprimitive quartic", "composita"]
+                "imprimitive quartic", "nested radical", "composita"]
 MAX_CANDIDATES = 10 ** 6  # radicands to sieve for one field before giving up
+# nested radicals: candidates for beta to test for one quadratic subfield before giving up. Only
+# fields with many radicals get there (e.g. Q(\\zeta_5, \\sqrt{2}, \\sqrt{3})), and those have
+# composita names.
+MAX_NESTED_CANDIDATES = 20000  # e.g. 6^5 (about 1s), not 8^5
 
 
 @dataclass
@@ -53,10 +66,17 @@ class NumberField:
     disc_abs: int
     ramps: tuple     # ramified primes
     label: str = None
+    _subfields: dict = field(default_factory=dict, repr=False, compare=False)
 
     @property
     def degree(self):
         return len(self.coeffs) - 1
+
+    def subfields(self, d):
+        """nfsubfields of degree d, computed once."""
+        if d not in self._subfields:
+            self._subfields[d] = pari.nfsubfields(self.poly(), d)
+        return self._subfields[d]
 
     def poly(self, var="y"):
         # Number fields are in y, so that polynomials over them can be in x (which PARI
@@ -198,7 +218,7 @@ def multiquadratic_basis(K):
     # every unramified prime has residue degree 1 or 2
     if any(max(_factor_degrees(K, q)) > 2 for q in _unramified_primes(K, 8)):
         return None
-    subs = pari.nfsubfields(K.poly(), 2)
+    subs = K.subfields(2)
     if len(subs) != n - 1:
         return None
     ds = sorted({int(pari.core(pari.poldisc(s[0]))) for s in subs}, key=order_key)
@@ -267,12 +287,12 @@ def _to_L(z, s, f):
 
 
 def quartic_params(K):
-    """(A, B, D) with K = Q(\\sqrt{A + B\\sqrt{D}}) simplest as in imprimitive_quartic.py and
-    A != 0 (A = 0 is the pure quartic), or None if K is not a C4 or D4 quartic."""
-    if K.degree != 4:
+    """(A, B, D) with K = Q(\\sqrt{A + B\\sqrt{D}}) simplest as in imprimitive_quartic.py, or None
+    if K is not a C4 or D4 quartic, or is pure (it keeps its pure name)."""
+    if K.degree != 4 or pure_radicand(K):
         return None
     fy = K.poly()
-    subs = pari.nfsubfields(fy, 2)
+    subs = K.subfields(2)
     if len(subs) != 1:
         return None  # primitive, or biquadratic
     g, h = subs[0]
@@ -294,87 +314,240 @@ def quartic_params(K):
     return _simplest_abd(u, v, D)
 
 
-def _simplest_abd(u, v, D):
-    """The simplest (A, B) (see imprimitive_quartic.simplicity) with A + B sqrt(D) in
-    (u + v sqrt(D)) L^{*2} or its conjugate, L = Q(sqrt(D)), A != 0; returns (A, B, D)."""
-    bnf = pari.bnfinit(pari("w^2") - D, 1)
-    w = pari.Mod(pari("w"), pari("w^2") - D)
-    beta = u + v * w
+_BNF = {}
+
+
+def _bnf(D):
+    """bnfinit of L = Q(sqrt(D)), in the variable w."""
+    if D not in _BNF:
+        _BNF[D] = pari.bnfinit(pari("w^2") - D, 1)
+    return _BNF[D]
+
+
+def _simplest_abd(u, v, D, n=2):
+    """The simplest (A, B) (see _abd_key) with A + B sqrt(D) in (u + v sqrt(D)) L^{*n} or its
+    conjugate, L = Q(sqrt(D)), A != 0 and B != 0; returns (A, B, D), or None.
+
+    Every such z has ideal C^n R, with R the n-th power free part of (u + v sqrt(D)) and C an
+    integral ideal in a fixed class, and |N(z)| = |A^2 - B^2 D| <= M^2 (1 + |D|) when
+    max(|A|, |B|) <= M. So once some (A, B) is known, running over the C of norm up to
+    (M^2 (1 + |D|) / N(R))^(1/n) and over the units finds the simplest one.
+    """
+    bnf = _bnf(D)
+    mod = pari("w^2") - D
+    beta = u + v * pari.Mod(pari("w"), mod)
     fac = pari.idealfactor(bnf, beta)
     I, R = 1, 1
     for P, e in zip(fac[0], fac[1]):
-        I = pari.idealmul(bnf, I, pari.idealpow(bnf, P, int(e) // 2))
-        if int(e) % 2:
-            R = pari.idealmul(bnf, R, P)
+        I = pari.idealmul(bnf, I, pari.idealpow(bnf, P, int(e) // n))
+        if int(e) % n:
+            R = pari.idealmul(bnf, R, pari.idealpow(bnf, P, int(e) % n))
     norm_R = int(pari.idealnorm(bnf, R))
     if D > 0:
-        eps = pari.Mod(pari.lift(pari("(b) -> b.fu[1]")(bnf)), pari("w^2") - D)
-        unit_sq = None
+        eps = pari.Mod(pari.lift(pari("(b) -> b.fu[1]")(bnf)), mod)
+        unit_powers = None
     else:
         tu = pari("(b) -> b.tu")(bnf)
-        unit_sq = [pari.Mod(pari.lift(tu[1]), pari("w^2") - D) ** (2 * j) for j in range(int(tu[0]))]
+        unit_powers = [pari.Mod(pari.lift(tu[1]), mod) ** (n * j) for j in range(int(tu[0]))]
     sqrtD = math.sqrt(abs(D))
 
     def ab(z):
-        """Integers (A, B) with z = (A + B sqrt D) / c^2 for the smallest c, B >= 0."""
+        """Integers (A, B) with z = (A + B sqrt D) / c^n for the smallest c, B >= 0."""
         a0, b0 = pari.polcoef(pari.lift(z), 0), pari.polcoef(pari.lift(z), 1)
         den = int(pari.lcm(pari.denominator(a0), pari.denominator(b0)))
-        A, B = int(a0 * den * den), int(b0 * den * den)
+        c = math.prod(int(p) ** -(-int(e) // n) for p, e in zip(*pari.factor(den))) if den > 1 else 1
+        A, B = int(a0 * c ** n), int(b0 * c ** n)
         g = math.gcd(A, B)
         for p in [int(p) for p in pari.factor(g)[0]] if g > 1 else []:
-            while A % (p * p) == 0 and B % (p * p) == 0:
-                A //= p * p
-                B //= p * p
+            while A % p ** n == 0 and B % p ** n == 0:
+                A //= p ** n
+                B //= p ** n
         return (A, abs(B)) if B else None
 
-    def key(A, B):
-        return (max(abs(A), abs(B)), abs(B), abs(A), A < 0)
-
-    def candidates(max_norm):
+    def candidates(max_norm, T):
         for C in itertools.chain.from_iterable(pari.ideallist(bnf, max_norm)):
             cls, nu = pari.bnfisprincipal(bnf, pari.idealdiv(bnf, C, I), 1)
             if any(int(c) for c in cls):
                 continue
-            z0 = beta * pari.nfbasistoalg(bnf, nu) ** 2
-            if unit_sq is not None:
-                zs = [z0 * t for t in unit_sq]
+            z0 = beta * pari.nfbasistoalg(bnf, nu) ** n
+            if unit_powers is not None:
+                zs = [z0 * t for t in unit_powers]
             else:
-                zs = [z0 * eps ** (2 * k) for k in _unit_range(z0, eps, bound[0] * (1 + sqrtD))]
+                zs = [z0 * eps ** (n * k) for k in _unit_range(z0, eps, T, n)]
             for z in zs:
                 res = ab(z)
                 if res and res[0] != 0:
                     yield res
 
-    bound = [math.inf]
     best = None
     # First a few small ideals for a good starting bound, then everything below it.
-    for max_norm in (16, None):
-        if max_norm is None:
-            if best is None:
-                return None
-            M = key(*best)[0]
-            max_norm = int(math.isqrt(int(M * M * (1 + abs(D)) // norm_R))) + 1
-            bound[0] = M
-        for A, B in candidates(max_norm):
-            if best is None or key(A, B) < key(*best):
-                best = (A, B)
+    for A, B in candidates(16, math.inf):
+        if best is None or _abd_key(A, B) < _abd_key(*best):
+            best = (A, B)
+    if best is None:
+        return None
+    M = _abd_key(*best)[0]
+    max_norm = int(((M * M * (1 + abs(D))) / norm_R) ** (1 / n)) + 1
+    for A, B in candidates(max_norm, M * (1 + sqrtD)):
+        if _abd_key(A, B) < _abd_key(*best):
+            best = (A, B)
     return best + (D,)
 
 
-def _unit_range(z, eps, T):
-    """The k with |sigma(z eps^{2k})| <= T at both real places (or all k near the balance
+def _abd_key(A, B):
+    # as in imprimitive_quartic.simplicity and nested_radical.simplicity, for a fixed D
+    return (max(abs(A), abs(B)), abs(B), abs(A), A < 0)
+
+
+def _log_embeddings(z):
+    """(log|u + v sqrt D|, log|u - v sqrt D|) for z = u + v sqrt(D) in a real quadratic field.
+
+    The larger one has no cancellation, and the other comes from the exact norm, so this
+    works however large u and v are (z often is a big power)."""
+    lz = pari.lift(z)
+    u, v = pari.polcoef(lz, 0), pari.polcoef(lz, 1)
+    D = -pari.polcoef(z.mod(), 0)
+    big = float(pari.log(pari.abs(u) + pari.abs(v) * pari.sqrt(D)))
+    small = float(pari.log(pari.abs(u * u - v * v * D))) - big
+    return (big, small) if u * v >= 0 else (small, big)
+
+
+def _unit_range(z, eps, T, n=2):
+    """The k with |sigma(z eps^{nk})| <= T at both real places (or the k near the balance
     point when T is infinite)."""
-    x1, x2 = [abs(float(c)) for c in pari.conjvec(z)]
-    e1 = abs(float(pari.conjvec(eps)[0]))
-    le = 2 * math.log(e1)
-    mid = (math.log(x2) - math.log(x1)) / (2 * le)  # balances the two conjugates
+    l1, l2 = _log_embeddings(z)
+    le = n * _log_embeddings(eps)[0]
     if math.isinf(T):
+        mid = (l2 - l1) / (2 * le)  # balances the two conjugates
         return range(math.floor(mid) - 1, math.ceil(mid) + 2)
-    lo = (math.log(x2) - math.log(T)) / le
-    hi = (math.log(T) - math.log(x1)) / le
+    lo = (l2 - math.log(T)) / le
+    hi = (math.log(T) - l1) / le
     if le < 0:
-        lo, hi = -hi, -lo
+        lo, hi = hi, lo
     return range(math.floor(lo) - 1, math.ceil(hi) + 2)
+
+
+def _quadratic_subfields(K):
+    """[(D, sqrt(D) in K as a Mod)] for the quadratic subfields Q(sqrt(D)) of K."""
+    fy = K.poly()
+    out = []
+    for g, h in K.subfields(2):
+        disc = pari.poldisc(g)
+        D = int(pari.core(disc))
+        r = pari.sqrtint(disc / D)
+        out.append((D, pari.Mod((2 * h + pari.polcoef(g, 1)) / r, fy)))
+    return out
+
+
+def nested_params(K, max_size=None):
+    """(n, a, b, d) with K = Q(\\sqrt[n]{a + b\\sqrt{d}}) of degree 2n, n >= 3, simplest as in
+    nested_radical.py, or None. Pure fields are left out (they keep their pure name).
+
+    For each quadratic subfield L = Q(sqrt(d)): if K = L(alpha) with alpha^n = beta in L, then
+    v_P(beta) is divisible by n at every prime P of L not above a ramified prime of K or n.
+    So, adding primes that generate the class group of L to the set S of those primes, beta
+    is an S-unit times an n-th power. The S-units mod n-th powers are a finite group; we
+    sieve it with primes of degree 1 of K (as for pure fields, now a linear system mod n),
+    test the survivors with nfroots, and find the simplest a + b sqrt(d) for each.
+
+    If given, only names with radicand_size below max_size are looked for (so d with
+    |d| >= max_size are skipped).
+    """
+    if K.degree < 6 or K.degree % 2 or pure_radicand(K):
+        return None
+    n = K.degree // 2
+    fy = K.poly()
+    best = None
+    for D, s in _quadratic_subfields(K):
+        if max_size is not None and abs(D) >= max_size:
+            continue
+        for beta in _nested_betas(K, n, D, s):
+            u, v = beta
+            abd = _simplest_abd(u, v, D, n)
+            if abd and (best is None or _nested_full_key(*abd) < _nested_full_key(*best)):
+                best = abd
+    return (n,) + best if best else None
+
+
+def _nested_full_key(a, b, d):
+    return (max(abs(a), abs(b)), abs(b), abs(a), abs(d), a < 0, d < 0)
+
+
+def _nested_betas(K, n, D, s):
+    """The (u, v) with beta = u + v sqrt(D) such that K = L(\\sqrt[n]{beta}), up to n-th powers."""
+    bnf = _bnf(D)
+    mod = pari("w^2") - D
+    primes = set(K.ramps) | {int(p) for p in pari.factor(n)[0]}
+    S = [P for p in sorted(primes) for P in pari.idealprimedec(bnf, p)]
+    for g in pari("(b) -> b.gen")(bnf):  # so that S-units cover the class group
+        for P in pari.idealfactor(bnf, g)[0]:
+            if P not in S:
+                S.append(P)
+    tu = pari("(b) -> b.tu")(bnf)
+    gens = [pari.Mod(pari.lift(tu[1]), mod)]
+    if D > 0:
+        gens.append(pari.Mod(pari.lift(pari("(b) -> b.fu[1]")(bnf)), mod))
+    gens += [pari.Mod(pari.lift(pari.nfbasistoalg(bnf, x)), mod) for x in pari.bnfsunit(bnf, S)[0]]
+    fy = K.poly()
+
+    def in_K(z):  # u + v w  ->  u + v s
+        return pari.polcoef(pari.lift(z), 0) + pari.polcoef(pari.lift(z), 1) * s
+
+    gens_K = [pari.lift(in_K(g)) for g in gens]
+    # Conditions: at a degree 1 prime P of K above q, beta = prod g_i^e_i must be an n-th
+    # power in F_q, a linear condition on the e_i mod gcd(n, q - 1).
+    rows = []
+    pdisc = abs(int(pari.poldisc(fy)))
+    for q in pari.primes(2000):
+        q, g = int(q), math.gcd(n, int(q) - 1)
+        if g == 1 or n % q == 0 or pdisc % q == 0:
+            continue  # only primes with q = 1 mod a divisor of n give conditions
+        h = pow(int(pari.znprimroot(q)), (q - 1) // g, q)
+        dlog = {pow(h, j, q): j for j in range(g)}
+        for r in pari.polrootsmod(fy, q):
+            r = int(pari.lift(r))
+            vals = []
+            for gk in gens_K:
+                den = int(pari.denominator(pari.content(gk)))
+                x = int(pari.subst(gk * den, "y", r)) % q
+                if den % q == 0 or x == 0:
+                    vals = None  # some generator is not a unit at this prime
+                    break
+                x = x * pow(den, -1, q) % q
+                vals.append(dlog[pow(x, (q - 1) // g, q)] * (n // g))
+            if vals:
+                rows.append(vals)
+        if len(rows) >= 3 * len(gens) + 10:
+            break
+    if not rows:
+        return []
+    ker = pari.matkermod(pari.matrix(len(rows), len(gens), [x for row in rows for x in row]), n)
+    cols = [[int(ker[i, j]) for i in range(len(gens))] for j in range(int(pari.matsize(ker)[1]))]
+    if n ** len(cols) > MAX_NESTED_CANDIDATES:
+        return []
+    w = int(tu[0])  # gens[0] is a root of unity of order w, the others are free
+    units = [k for k in range(1, n) if math.gcd(k, n) == 1]
+    primes_n = [int(p) for p in pari.factor(n)[0]]
+    out, seen = [], set()
+    for cs in itertools.product(range(n), repeat=len(cols)):
+        e = tuple(sum(c * col[i] for c, col in zip(cs, cols)) % n for i in range(len(gens)))
+        if e in seen:
+            continue
+        # beta and beta^k (k prime to n) give the same field: test one of them
+        orbit = {tuple(k * x % n for x in e) for k in units}
+        seen |= orbit
+        # x^n - beta is reducible when beta is a p-th power in L for a prime p | n, which
+        # (up to the root of unity) is when every free exponent is divisible by p
+        if any(all(x % p == 0 for x in e[1:]) and (w % p or e[0] % p == 0) for p in primes_n):
+            continue
+        beta = math.prod((gens[i] ** e[i] for i in range(len(gens))), start=pari.Mod(1, mod))
+        # K = L(alpha) when x^n - beta is irreducible over L and has a root in K
+        if (len(pari.nffactor(mod, pari("x^%d" % n) - beta)[0]) == 1
+                and len(pari.nfroots(fy, pari("x^%d" % n) - in_K(beta)))):
+            for k in units:
+                lb = pari.lift(beta ** k)
+                out.append((pari.polcoef(lb, 0), pari.polcoef(lb, 1)))
+    return out
 
 
 # ---------------------------------------------------------------- composita from subfields
@@ -382,28 +555,29 @@ def _unit_range(z, eps, T):
 _BLOCKS = {}
 
 
-def _block(coeffs, primes):
-    """How a subfield (polredabs coeffs) can appear in a \\Q(g_1, g_2) name: (kind, degree, data)
-    with kind "quadratic" (data d), "cyclotomic" (m), "pure" (a) or "quartic" ((A, B, D)), or None."""
+def _blocks(coeffs, primes):
+    """How a subfield (polredabs coeffs) can appear in a \\Q(g_1, g_2) name: a list of
+    (kind, degree, data) with kind "quadratic" (data d), "cyclotomic" (m), "pure" (a) or
+    "quartic" ((A, B, D)). As in named_composita.py, each subfield is used as the first of
+    cyclotomic, pure and imprimitive quartic that it is."""
     if coeffs in _BLOCKS:
         return _BLOCKS[coeffs]
     d = len(coeffs) - 1
-    out = None
+    out = []
     if d == 2:
-        out = ("quadratic", 2, int(pari.core(pari.poldisc(pari.Polrev(list(coeffs))))))
+        out.append(("quadratic", 2, int(pari.core(pari.poldisc(pari.Polrev(list(coeffs)))))))
     else:
         S = from_coeffs(coeffs, primes)
         m = cyclotomic_conductor(S)
         if m:
-            out = ("cyclotomic", d, m)
+            out.append(("cyclotomic", d, m))
         else:
             a = pure_radicand(S)
+            abd = quartic_params(S) if d == 4 and not a else None
             if a:
-                out = ("pure", d, a)
-            elif d == 4:
-                abd = quartic_params(S)
-                if abd:
-                    out = ("quartic", 4, abd)
+                out.append(("pure", d, a))
+            elif abd:
+                out.append(("quartic", 4, abd))
     _BLOCKS[coeffs] = out
     return out
 
@@ -450,18 +624,74 @@ def composita_names(K):
         return []
     subs = {d: [] for d in divisors}
     for d in divisors:
-        for g, _ in pari.nfsubfields(K.poly(), d):
-            b = _block(polredabs_coeffs(g), K.ramps)
-            if b:
-                subs[d].append(b)
+        for g, _ in K.subfields(d):
+            subs[d].append(_blocks(polredabs_coeffs(g), K.ramps))
     names = []
     for d1 in divisors:
         d2 = n // d1
         if d1 > d2:
             break
-        for i, b1 in enumerate(subs[d1]):
-            for b2 in subs[d2][i + 1:] if d1 == d2 else subs[d2]:
-                names += _pair_names(b1, b2, n)
+        for i, bs1 in enumerate(subs[d1]):
+            for bs2 in subs[d2][i + 1:] if d1 == d2 else subs[d2]:
+                for b1 in bs1:
+                    for b2 in bs2:
+                        names += _pair_names(b1, b2, n)
+    return names + _long_composita_names(K, divisors)
+
+
+_GENERATORS = {}
+
+
+def _generators(g, primes):
+    """For a subfield (polynomial g): (Galois, generators of its best name as a list, poly),
+    when it is quadratic, cyclotomic, multiquadratic, Kummer, pure or an imprimitive quartic;
+    else None."""
+    coeffs = polredabs_coeffs(g)
+    if coeffs in _GENERATORS:
+        return _GENERATORS[coeffs]
+    d = len(coeffs) - 1
+    S = from_coeffs(coeffs, primes)
+    galois = []  # names of S as a Galois field
+    if d == 2:
+        galois.append([_symbol(_blocks(coeffs, primes)[0])])
+    m = cyclotomic_conductor(S)
+    if m:
+        galois.append([zeta_symbol(m)])
+    basis = multiquadratic_basis(S)
+    if basis:
+        galois.append([sqrt_symbol(b) for b in basis])
+    na = kummer_params(S)
+    if na:
+        galois.append([zeta_symbol(na[0]), root_symbol(*na)])
+    if galois:
+        out = (True, min(galois, key=lambda gs: name_key(r"\Q(%s)" % ", ".join(gs))))
+    else:
+        blocks = _blocks(coeffs, primes) if d > 2 else []
+        out = (False, [_symbol(blocks[0])]) if blocks else None
+    if out:
+        out = out + (pari.Polrev(list(coeffs)),)
+    _GENERATORS[coeffs] = out
+    return out
+
+
+def _long_composita_names(K, divisors):
+    """\\Q(g_1, ..., g_k) names with k >= 3 generators: K = K_1 K_2 with K_1 a Galois subfield
+    (quadratic, cyclotomic, multiquadratic or Kummer), K_2 any named subfield, and
+    [K_1][K_2] = [K]; the generators of both best names, in the order of generator_key."""
+    n = K.degree
+    gens = {d: [x for x in (_generators(g, K.ramps) for g, _ in K.subfields(d)) if x]
+            for d in divisors}
+    names = []
+    for d1 in divisors:
+        for g1 in gens[d1]:
+            if not g1[0]:
+                continue
+            for g2 in gens[n // d1]:
+                all_gens = sorted(set(g1[1] + g2[1]), key=generator_key)
+                if len(all_gens) < 3 or all(re.fullmatch(r"i|\\sqrt\{-?\d+\}", g) for g in all_gens):
+                    continue  # two generators: composita_names; all quadratic: multiquadratic
+                if int(pari.poldegree(pari.polcompositum(g1[2], g2[2])[0])) == n:
+                    names.append(r"\Q(%s)" % ", ".join(all_gens))
     return names
 
 
@@ -486,8 +716,14 @@ def _pair_names(b1, b2, n):
 
 # ---------------------------------------------------------------- all together
 
-def all_names(K, families=FAMILY_TESTS):
-    """Every name of K found by the tests in families (see FAMILY_TESTS)."""
+def all_names(K, families=FAMILY_TESTS, best_only=False):
+    """Every name of K found by the tests in families (see FAMILY_TESTS).
+
+    With best_only, tests that cannot give a better name than one already found are
+    skipped: nothing after a cyclotomic, real cyclotomic or multiquadratic name (those
+    families win over all the radical ones), and nested radicals only below the smallest
+    radicand_size found (they rank last among the radical families).
+    """
     names = []
     if "cyclotomic" in families:
         m = cyclotomic_conductor(K)
@@ -501,6 +737,8 @@ def all_names(K, families=FAMILY_TESTS):
         basis = multiquadratic_basis(K)
         if basis:
             names.append(multiquadratic_name(basis))
+    if best_only and names:
+        return names
     if "pure" in families:
         a = pure_radicand(K)
         if a:
@@ -515,10 +753,15 @@ def all_names(K, families=FAMILY_TESTS):
             names.append(quartic_name(*abd))
     if "composita" in families:
         names += composita_names(K)
+    if "nested radical" in families:
+        max_size = min(map(radicand_size, names)) if best_only and names else None
+        params = nested_params(K, max_size)
+        if params:
+            names.append(nested_name(*params))
     return list(dict.fromkeys(names))
 
 
 def best_name(K, families=FAMILY_TESTS):
     """The best name of K (smallest name_key) among all_names, or None."""
-    names = all_names(K, families)
+    names = all_names(K, families, best_only=True)
     return min(names, key=name_key) if names else None

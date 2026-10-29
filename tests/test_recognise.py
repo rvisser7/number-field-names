@@ -9,13 +9,14 @@ try:
     from cyclotomic import cyclotomic_fields, cyclotomic_name, real_cyclotomic_fields, real_cyclotomic_name
     from imprimitive_quartic import imprimitive_quartic_fields, quartic_name
     from multiquadratic import greedy_bases, multiquadratic_coeffs, multiquadratic_name
+    from nested_radical import nested_name, nested_radical_fields
     from named_composita import named_composita_fields
     from pari_fields import make_field, pari, polredabs_coeffs
     from pure import pure_fields, pure_name
     from radical import composita_fields, kummer_fields, kummer_name
     from recognise import (all_names, best_name, composita_names, cyclotomic_conductor, from_coeffs,
-                           from_label, kummer_params, multiquadratic_basis, pure_radicand,
-                           quartic_params)
+                           from_label, kummer_params, multiquadratic_basis, nested_params,
+                           pure_radicand, quartic_params)
 except SystemExit:  # cypari2 not installed
     best_name = None
 
@@ -56,6 +57,10 @@ class TestRecognise(unittest.TestCase):
         fields = [F for F in imprimitive_quartic_fields(6) if r"\sqrt[4]" not in F.name]
         self.check(fields, lambda K: quartic_name(*quartic_params(K)))
 
+    def test_nested_radical(self):
+        for n, bound in [(3, 4), (4, 3), (6, 2)]:
+            self.check(nested_radical_fields(n, bound), lambda K: nested_name(*nested_params(K)))
+
     def test_kummer(self):
         self.check(kummer_fields([3, 4], 10), lambda K: kummer_name(*kummer_params(K)))
 
@@ -83,6 +88,15 @@ class TestRecognise(unittest.TestCase):
             "x^4 - 2*x^2 - 1": r"\Q(\sqrt{1 + \sqrt{2}})",
             "polcompositum(polcyclo(5), x^2 - 2)[1]": r"\Q(\zeta_{5}, \sqrt{2})",
             "polcompositum(x^2 + 1, x^4 - 2*x^2 - 1)[1]": r"\Q(i, \sqrt{1 + \sqrt{2}})",
+            "(x^3 - 1)^2 + 24": r"\Q(\sqrt[3]{1 + 2\sqrt{-6}})",
+            "x^4 - 12": r"\Q(\sqrt[4]{12})",                              # not \Q(\sqrt{3 + 2\sqrt{3}})
+            "polcompositum(polcyclo(8), x^3 - 3)[1]": r"\Q(\zeta_{8}, \sqrt[3]{3})",  # not \Q(i, \sqrt{2}, ...)
+            "polcompositum(polcompositum(x^2 - 2, x^2 - 3)[1], x^3 - 5)[1]":
+                r"\Q(\sqrt{2}, \sqrt{3}, \sqrt[3]{5})",
+            "polcompositum(polcompositum(x^2 + 3, x^3 - 2)[1], x^3 - 3)[1]":
+                r"\Q(\zeta_{3}, \sqrt[3]{2}, \sqrt[3]{3})",
+            "polcompositum(polcompositum(polcyclo(5), x^2 - 2)[1], x^2 - 3)[1]":
+                r"\Q(\zeta_{5}, \sqrt{2}, \sqrt{3})",
             "polcompositum(x^3 - 2, x^5 - 3)[1]": r"\Q(\sqrt[3]{2}, \sqrt[5]{3})",
         }
         for poly, name in examples.items():

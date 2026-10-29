@@ -13,7 +13,9 @@ and we choose (A, B) to be as simple as possible:
   * B > 0 (B and -B give conjugate, so isomorphic, fields);
   * smallest max(|A|, |B|), then smallest |B|, then smallest |A|, then A > 0.
 
-If the simplest choice has A = 0, the field is pure, Q(\\sqrt[4]{B^2 D}), and gets that name.
+Pure fields are left out, as generate_pure.py names them: those with A = 0, where
+Q(\\sqrt{B\\sqrt{D}}) = Q(\\sqrt[4]{B^2 D}), and those like Q(\\sqrt[4]{12}) = Q(\\sqrt{3 + 2\\sqrt{3}})
+that only have A = 0 beyond the bound (found with recognise.pure_radicand).
 """
 
 from math import gcd
@@ -61,5 +63,11 @@ def imprimitive_quartic_fields(bound, progress=None):
     for coeffs, abds in reps.items():
         if len(pari.nfsubfields(pari.Polrev(list(coeffs)), 2)) == 3:
             continue  # V4: biquadratic
-        out.append(make_field(quartic_name(*min(abds, key=simplicity)), coeffs))
+        if not any(A == 0 for A, _, _ in abds) and not _is_pure(coeffs):
+            out.append(make_field(quartic_name(*min(abds, key=simplicity)), coeffs))
     return out
+
+
+def _is_pure(coeffs):
+    from recognise import from_coeffs, pure_radicand  # recognise imports this module
+    return pure_radicand(from_coeffs(coeffs)) is not None

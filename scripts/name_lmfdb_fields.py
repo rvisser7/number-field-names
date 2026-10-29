@@ -4,8 +4,9 @@
 This is the backward direction (see recognise.py). Instead of generating fields from
 parameters up to a bound, it goes through the LMFDB fields of the given degrees and, for each,
 decides which families it belongs to. For cyclotomic, real cyclotomic, multiquadratic, pure,
-Kummer and imprimitive quartic fields the answer is complete, with no bound. Composita come
-from pairs of named subfields. Nested radicals (n >= 3) are not tested yet.
+Kummer, imprimitive quartic and nested radical fields the answer is complete, with no bound
+(nested radicals with too many candidates are skipped, see recognise.py). Composita come from
+named subfields, with two or more generators.
 
 The names are merged into data/degree<n>.txt every --batch fields, keeping the better name
 when a field already has one (see name_key in nf_names.py), so an interrupted run keeps

@@ -32,7 +32,7 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `imprimitive_quartic.py`: the quartic fields $\mathbb{Q}(\sqrt{A + B\sqrt{D}})$ with $|A|, |B|, |D| \leq N$ and $D$ squarefree,
   leaving out the biquadratic (V4) ones. Their quadratic subfield $\mathbb{Q}(\sqrt{D})$ is unique, and $(A, B)$ is chosen
   with $B > 0$ and smallest $\max(|A|, |B|)$, then $|B|$, then $|A|$, then $A > 0$. If that gives $A = 0$ the field is
-  named as a pure quartic $\mathbb{Q}(\sqrt[4]{B^2 D})$, the same name `generate_pure.py` gives. $D = -1$ is written $i$,
+  left out as pure, as are pure fields that only have $A = 0$ beyond the bound (`generate_pure.py` names them). $D = -1$ is written $i$,
   as in the LMFDB, e.g. `\Q(\sqrt{1 + 2i})`.
 - `generate_imprimitive_quartic.py`: looks these up in the LMFDB and merges them into `data/degree4.txt`, e.g.
   `python3 scripts/generate_imprimitive_quartic.py --bound 50 --source db`.
@@ -62,8 +62,9 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   `python3 scripts/generate_named_composita.py --max-degree 16 --bound 20 --source db`.
 - `nested_radical.py`: the fields $\mathbb{Q}(\sqrt[n]{a + b\sqrt{d}})$ of degree $2n$, $n \geq 3$, with $|a|, |b|, |d| \leq N$ and $d$
   squarefree, the analogue of the imprimitive quartics for higher $n$. Each field gets its simplest $(a, b, d)$: $b > 0$, no
-  $p^n$ dividing both $a$ and $b$, smallest $\max(|a|, |b|)$, then $|b|$, $|a|$, $|d|$, then $a > 0$, $d > 0$. Fields that $a = 0$
-  also gives are pure and left to `generate_pure.py`; $d = -1$ is written $i$.
+  $p^n$ dividing both $a$ and $b$, smallest $\max(|a|, |b|)$, then $|b|$, $|a|$, $|d|$, then $a > 0$, $d > 0$. Pure fields (those
+  that $a = 0$ also gives, and the likes of $\mathbb{Q}(\sqrt[3]{5 + 5i}) = \mathbb{Q}(\sqrt[6]{-400})$) are left to `generate_pure.py`;
+  $d = -1$ is written $i$.
 - `generate_nested_radical.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_nested_radical.py --n 3 --bound 20 --source db` (about 13 s of PARI for $n = 3$, bound 20).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
@@ -77,11 +78,17 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   primes with exponents below $n$ (fixed by the discriminant for tame primes), sieved with small primes and
   checked with `nfroots`. Imprimitive quartics: from $K = L(\sqrt{\beta})$, the simplest $A + B\sqrt{D}$ in
   $\beta L^{*2}$ is found by running over the ideals of small norm in the right class and the units of $L$.
-  Multiquadratic: the quadratic subfields. Composita: pairs of named subfields.
+  Nested radicals: for each quadratic subfield $L$, the $\beta$ with $K = L(\sqrt[n]{\beta})$ are $S$-units times $n$-th
+  powers ($S$ the primes above the ramified primes and $n$), cut down by $n$-th power conditions at small primes and
+  checked with `nffactor` and `nfroots`, then simplified as for the quartics. Fields with more than 20000 candidates
+  (e.g. $\mathbb{Q}(\zeta_5, \sqrt{2}, \sqrt{3})$, which has a compositum name) are skipped.
+  Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
+  (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
+  $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.
 - `name_lmfdb_fields.py`: runs `recognise.py` over the LMFDB fields of the given degrees and merges the best names,
   every `--batch` fields. Fields come from the database (`--max-disc`, `--min-disc`, `--galois` narrow the query)
   or from a `label|coeffs` file (`--input`); `--shard i/k` splits a degree between jobs, `--families` picks the tests,
   `--only-unnamed` skips fields that already have a name, and `--print` prints the names instead of merging.
-  It takes about 1 ms per field in degree 3 to 5, 2 to 4 ms in degree 6 to 9 and 20 ms in degree 12,
-  mostly computing subfields for composita (leave those out with `--families` for a faster pass). E.g.
+  It takes about 1 ms per field in degree 3 to 5, 2 to 10 ms in degree 6 to 10 and 20 to 40 ms in degree 12,
+  mostly computing subfields for composita and nested radicals (leave those out with `--families` for a faster pass). E.g.
   `sage -python scripts/name_lmfdb_fields.py --degrees 6 --max-disc 10^8 --shard 0/4`.

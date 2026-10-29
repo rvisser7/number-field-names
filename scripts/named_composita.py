@@ -50,8 +50,8 @@ def blocks(max_degree, bound, quartic_bound):
                 out.append(Block("pure", K.name[3:-1], pari.Polrev(list(K.coeffs)), m))
     cyclotomic = {polredabs_coeffs(b.poly) for b in out if b.degree == 4}
     for K in imprimitive_quartic_fields(quartic_bound):
-        # pure quartics are already above, and so are Q(\zeta_5) = Q(\sqrt{-5 + 2\sqrt{5}}) etc.
-        if r"\sqrt[4]" not in K.name and K.coeffs not in cyclotomic:
+        # cyclotomic quartics are already above, e.g. Q(\zeta_5) = Q(\sqrt{-5 + 2\sqrt{5}})
+        if K.coeffs not in cyclotomic:
             out.append(Block("quartic", K.name[3:-1], pari.Polrev(list(K.coeffs)), 4))
     # cyclotomic blocks by degree, so the smallest come first
     cyc = sorted((b for b in out if b.kind == "cyclotomic"), key=lambda b: b.degree)

@@ -61,9 +61,9 @@ generate_composita.py --pairs 3x5 --bound 50
 generate_named_composita.py --max-degree 16 --bound 30   # --max-degree 16 --bound 20 took ~30min
 
 # Naming the LMFDB fields directly (see name_lmfdb_fields.py). This is complete, with no bound,
-# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields,
-# and finds composita from named subfields, so it can replace most of the jobs above (nested
-# radicals still need generate_nested_radical.py). Uncomment to use; split big degrees with --shard.
+# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields and
+# nested radicals, and finds composita from named subfields, so it can replace most of the jobs
+# above. Uncomment to use; split big degrees with --shard.
 # name_lmfdb_fields.py --degrees 3-5
 # name_lmfdb_fields.py --degrees 6 --shard 0/2
 # name_lmfdb_fields.py --degrees 6 --shard 1/2

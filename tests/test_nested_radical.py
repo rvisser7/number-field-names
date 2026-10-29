@@ -55,8 +55,8 @@ class TestNestedRadical(unittest.TestCase):
                                 K.name)
 
     def test_pure_fields_left_out(self):
-        # Q(\sqrt[6]{m}) with |m| <= 8 is reached with a = 0, so it is left to generate_pure.py.
-        pure = {K.coeffs for K in pure_fields(6, 8)}
+        # Pure fields are left to generate_pure.py, also Q(\sqrt[3]{5 + 5i}) = Q(\sqrt[6]{-400}).
+        pure = {K.coeffs for K in pure_fields(6, 400)}
         self.assertFalse(pure & {K.coeffs for K in self.fields[3]})
 
     def test_family(self):

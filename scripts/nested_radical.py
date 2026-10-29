@@ -10,10 +10,12 @@ by its polredabs polynomial. Of the (a, b, d) giving the same field we keep the 
   * no prime p with p^n dividing both a and b (dividing by p^n gives the same field);
   * smallest max(|a|, |b|), then |b|, then |a|, then |d|, then a > 0, then d > 0.
 
-Fields that a = 0 also reaches are pure, Q(\\sqrt[2n]{b^2 d}), and are left to generate_pure.py.
+Pure fields are left out, as generate_pure.py names them: those with a = 0, where
+Q(\\sqrt[n]{b\\sqrt{d}}) = Q(\\sqrt[2n]{b^2 d}), and those like Q(\\sqrt[3]{5 + 5i}) = Q(\\sqrt[6]{-400})
+that only have a = 0 beyond the bound (found with recognise.pure_radicand).
 As for the quartics, d = -1 is written i, e.g. \\Q(\\sqrt[3]{1 + 2i}). Where this family overlaps
 another one (e.g. Q(\\sqrt{2}, \\sqrt[3]{3}) when a + b\\sqrt{d} is 3 times a cube in
-Q(\\sqrt{d})), the other name wins (see FAMILIES in nf_names.py).
+Q(\\sqrt{d})), the name with the smaller name_key wins (see nf_names.py).
 """
 
 from nf_names import is_squarefree
@@ -58,5 +60,7 @@ def nested_radical_fields(n, bound, progress=None):
                     reps.setdefault(polredabs_coeffs(f), []).append((a, b, d))
         if progress:
             progress(i, len(ds), f", {len(reps)} fields so far")
+    from recognise import from_coeffs, pure_radicand
     return [make_field(nested_name(n, *min(abds, key=simplicity)), coeffs)
-            for coeffs, abds in reps.items() if all(a != 0 for a, _, _ in abds)]
+            for coeffs, abds in reps.items()
+            if all(a != 0 for a, _, _ in abds) and pure_radicand(from_coeffs(coeffs)) is None]

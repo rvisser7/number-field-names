@@ -199,8 +199,9 @@ def _family_key(name, family):
     if family == "nested radical":
         m = _NESTED_RE.match(inner)
         return (int(m[1]),) + _nested_key(*_abd(m, 2))
-    if family == "compositum":
-        return tuple(generator_key(g) for g in inner.split(", "))
+    if family == "compositum":  # fewer generators first
+        gens = inner.split(", ")
+        return (len(gens),) + tuple(generator_key(g) for g in gens)
     return tuple((abs(k), k < 0) for k in map(int, re.findall(r"-?\d+", name)))
 
 

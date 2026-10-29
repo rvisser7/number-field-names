@@ -25,7 +25,9 @@ When a field has names from more than one family, the family higher up in the ta
 (as in the LMFDB's `field_pretty`), e.g. `4.0.256.1` is `\Q(\zeta_{8})` rather than `\Q(\sqrt[4]{-1})`.
 Between the families built from radicals (pure and everything below it), the name whose largest
 radicand is smallest wins first, so `\Q(\zeta_{3}, \sqrt[3]{2})` rather than `\Q(\sqrt[6]{-108})`, but
-`\Q(\sqrt[6]{-3})` rather than `\Q(\zeta_{3}, \sqrt[3]{3})`. Within a family the simplest parameters win.
+`\Q(\sqrt[6]{-3})` rather than `\Q(\zeta_{3}, \sqrt[3]{3})`. Within a family the simplest parameters win,
+and composita with fewer generators come first. Pure fields always keep their pure name: the imprimitive
+quartic and nested radical families leave them out, so `\Q(\sqrt[4]{12})` rather than `\Q(\sqrt{3 + 2\sqrt{3}})`.
 This order (`name_key` in `scripts/nf_names.py`) is used whenever names are merged, so the result
 does not depend on which script ran first.
 
@@ -42,7 +44,7 @@ does not depend on which script ran first.
 | Imprimitive quartic (C4, D4) | `\Q(\sqrt{A + B\sqrt{D}})` | script ready (`generate_imprimitive_quartic.py`) |
 | Kummer | `\Q(\zeta_{n}, \sqrt[n]{a})`, e.g. `\Q(\zeta_{3}, \sqrt[3]{2})`, `\Q(i, \sqrt[4]{2})` | script ready (`generate_kummer.py`) |
 | Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
-| Composita of named fields | `\Q(g_1, g_2)`, e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
+| Composita of named fields | `\Q(g_1, g_2)` (backward also `\Q(g_1, g_2, g_3)`), e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
 | Nested radicals, $n \geq 3$ | `\Q(\sqrt[n]{a + b\sqrt{d}})`, e.g. `\Q(\sqrt[3]{1 + \sqrt{2}})`, `\Q(\sqrt[4]{1 + 4i})` | script ready (`generate_nested_radical.py`) |
 
 ## Two ways to find names
@@ -51,8 +53,9 @@ does not depend on which script ran first.
   $\mathbb{Q}(\sqrt[n]{m})$), compute each field, and look it up in the LMFDB.
 * **Backward**, `name_lmfdb_fields.py`: go through the LMFDB fields of a degree and test each one
   against every family. For cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive
-  quartic fields this is complete, with no bound; composita come from pairs of named subfields.
-  Nested radicals are only found forward so far. For example
+  quartic fields and nested radicals this is complete, with no bound; composita come from named
+  subfields, including ones with three or more generators such as `\Q(\sqrt{2}, \sqrt{3}, \sqrt[3]{5})`.
+  For example
   `sage -python scripts/name_lmfdb_fields.py --degrees 3-6 --max-disc 10^8`.
 
 Both give the same name for a field (the tests check this), and both merge with `name_key`.
