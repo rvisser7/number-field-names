@@ -23,6 +23,11 @@ Names are stored without the surrounding `\(` `\)` and use the LMFDB's macros (s
 A field only appears in a file if we have a name for it.
 When a field has names from more than one family, the family higher up in the table below wins
 (as in the LMFDB's `field_pretty`), e.g. `4.0.256.1` is `\Q(\zeta_{8})` rather than `\Q(\sqrt[4]{-1})`.
+Between the families built from radicals (pure and everything below it), the name whose largest
+radicand is smallest wins first, so `\Q(\zeta_{3}, \sqrt[3]{2})` rather than `\Q(\sqrt[6]{-108})`, but
+`\Q(\sqrt[6]{-3})` rather than `\Q(\zeta_{3}, \sqrt[3]{3})`. Within a family the simplest parameters win.
+This order (`name_key` in `scripts/nf_names.py`) is used whenever names are merged, so the result
+does not depend on which script ran first.
 
 ## Families
 
@@ -39,6 +44,18 @@ When a field has names from more than one family, the family higher up in the ta
 | Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
 | Composita of named fields | `\Q(g_1, g_2)`, e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
 | Nested radicals, $n \geq 3$ | `\Q(\sqrt[n]{a + b\sqrt{d}})`, e.g. `\Q(\sqrt[3]{1 + \sqrt{2}})`, `\Q(\sqrt[4]{1 + 4i})` | script ready (`generate_nested_radical.py`) |
+
+## Two ways to find names
+
+* **Forward**, the `generate_*.py` scripts: run over small parameters (e.g. $|m| \leq 100$ for
+  $\mathbb{Q}(\sqrt[n]{m})$), compute each field, and look it up in the LMFDB.
+* **Backward**, `name_lmfdb_fields.py`: go through the LMFDB fields of a degree and test each one
+  against every family. For cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive
+  quartic fields this is complete, with no bound; composita come from pairs of named subfields.
+  Nested radicals are only found forward so far. For example
+  `sage -python scripts/name_lmfdb_fields.py --degrees 3-6 --max-disc 10^8`.
+
+Both give the same name for a field (the tests check this), and both merge with `name_key`.
 
 Every name other than those read off the label should be certified by checking that the
 polynomial it describes defines the same field as the LMFDB polynomial (e.g. with PARI's `nfisisom`).

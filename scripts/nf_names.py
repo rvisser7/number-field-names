@@ -10,6 +10,7 @@ A data file data/degree<n>.txt looks like
 """
 
 import fcntl
+import math
 import os
 import re
 
@@ -73,6 +74,17 @@ def write_data(path, rows):
 # order of the cases in the LMFDB's field_pretty, e.g. 4.0.256.1 is \Q(\zeta_{8}), not
 # \Q(\sqrt[4]{-1}), and 2.0.3.1 is \Q(\sqrt{-3}), not \Q(\zeta_{3}).
 # Names that match none of these rank last, so add each new family to this list.
+class _Checked:
+    """A regex whose match must also pass a check on its groups."""
+
+    def __init__(self, pattern, check):
+        self.rx, self.check = re.compile(pattern), check
+
+    def match(self, s):
+        m = self.rx.match(s)
+        return m if m and self.check(m) else None
+
+
 FAMILIES = [
     ("rational", re.compile(r"^\\Q$")),
     ("quadratic", re.compile(r"^\\Q\(\\sqrt\{-?\d+\}\)$")),
@@ -81,9 +93,13 @@ FAMILIES = [
     ("multiquadratic", re.compile(r"^\\Q\((i|\\sqrt\{-?\d+\})(, \\sqrt\{-?\d+\})+\)$")),
     ("pure", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+\}\)$")),
     ("imprimitive quartic", re.compile(r"^\\Q\(\\sqrt\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
-    ("kummer", re.compile(r"^\\Q\((i, \\sqrt\[4\]|\\zeta_\{\d+\}, \\sqrt\[\d+\])\{-?\d+\}\)$")),
+    # \zeta_{n} with \sqrt[n], or \zeta_{n/2} with \sqrt[n] for n = 2 mod 4, as radical.py writes them
+    ("kummer", _Checked(r"^\\Q\((i, \\sqrt\[4\]|\\zeta_\{(\d+)\}, \\sqrt\[(\d+)\])\{-?\d+\}\)$",
+                        lambda m: not m[2] or int(m[3]) in (int(m[2]), 2 * int(m[2]) if int(m[2]) % 2 else 0))),
+    # radicals of coprime degrees (\sqrt{a} and i have degree 2)
     ("radical compositum",
-     re.compile(r"^\\Q\((i|\\sqrt\{-?\d+\}|\\sqrt\[\d+\]\{-?\d+\}), \\sqrt\[\d+\]\{-?\d+\}\)$")),
+     _Checked(r"^\\Q\((i|\\sqrt\{-?\d+\}|\\sqrt\[(\d+)\]\{-?\d+\}), \\sqrt\[(\d+)\]\{-?\d+\}\)$",
+              lambda m: math.gcd(int(m[2] or 2), int(m[3])) == 1)),
     # Anything else of the form \Q(g_1, g_2), as written by named_composita.py
     ("compositum", re.compile(r"^\\Q\(.+, .+\)$")),
     ("nested radical", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
@@ -98,11 +114,102 @@ def family_rank(name):
     return len(FAMILIES)
 
 
+_ROOT = r"\\sqrt\{(-?\d+) \+ (\d*)(i|\\sqrt\{(-?\d+)\})\}"  # \sqrt{A + B\sqrt{D}}
+_NESTED_RE = re.compile(r"^\\sqrt\[(\d+)\]\{(-?\d+) \+ (\d*)(i|\\sqrt\{(-?\d+)\})\}$")
+_QUARTIC_RE = re.compile("^" + _ROOT + "$")
+
+
+def _abd(m, first):
+    """(a, b, d) from a match of _QUARTIC_RE or _NESTED_RE, whose a is group `first`."""
+    a, b = int(m[first]), int(m[first + 1] or 1)
+    return a, b, (-1 if m[first + 2] == "i" else int(m[first + 3]))
+
+
+def _nested_key(a, b, d):
+    # as in imprimitive_quartic.py and nested_radical.py
+    return (max(abs(a), abs(b)), abs(b), abs(a), abs(d), a < 0, d < 0)
+
+
+def _totient(n):
+    out, p, m = n, 2, n
+    while p * p <= m:
+        if m % p == 0:
+            while m % p == 0:
+                m //= p
+            out -= out // p
+        p += 1
+    return out - out // m if m > 1 else out
+
+
+def generator_key(g):
+    """Order of the generators of a \\Q(g_1, g_2) name, as in named_composita.py: cyclotomic
+    (by degree, i first), then quadratic, pure and imprimitive quartic, each simplest first."""
+    if g == "i":
+        return (0, 2, False, 4)
+    m = re.match(r"^\\zeta_\{(\d+)\}$", g)
+    if m:
+        return (0, _totient(int(m[1])), True, int(m[1]))
+    m = re.match(r"^\\sqrt\{(-?\d+)\}$", g)
+    if m:
+        return (1, abs(int(m[1])), int(m[1]) < 0)
+    m = re.match(r"^\\sqrt\[(\d+)\]\{(-?\d+)\}$", g)
+    if m:
+        return (2, int(m[1]), abs(int(m[2])), int(m[2]) < 0)
+    m = _QUARTIC_RE.match(g)
+    if m:
+        return (3,) + _nested_key(*_abd(m, 1))
+    return (4, g)
+
+
+# Families whose names are built from radicals. Between these, the name with the smallest
+# radicands wins first, and only then the family order: Q(\zeta_{3}, \sqrt[3]{2}) rather than
+# its pure name Q(\sqrt[6]{-108}), but Q(\sqrt[6]{-3}) rather than Q(\zeta_{3}, \sqrt[3]{3}).
+RADICAL_FAMILIES = {"pure", "imprimitive quartic", "kummer", "radical compositum", "compositum",
+                    "nested radical"}
+
+
+def radicand_size(name):
+    """The largest |integer| in a name, leaving out root indices and \\zeta subscripts."""
+    s = re.sub(r"\\sqrt\[\d+\]|\\zeta_\{\d+\}", "", name)
+    return max((abs(int(k)) for k in re.findall(r"-?\d+", s)), default=0)
+
+
+def name_key(name):
+    """Sort key for names of one field: the smaller key is the better name.
+
+    Names of different families are ordered as in FAMILIES, except that between the
+    RADICAL_FAMILIES the smallest radicand_size comes first. Within a family the name with
+    the simplest parameters wins, by the rule the generate_*.py scripts use to choose (e.g.
+    smallest |m|, positive first, for \\Q(\\sqrt[n]{m})), so that the name kept does not depend
+    on which script found it first. Names of no known family are never replaced.
+    """
+    rank = family_rank(name)
+    family = FAMILIES[rank][0] if rank < len(FAMILIES) else None
+    if family is None:
+        return (rank, 0, rank, ())
+    tier = (min(i for i, (f, _) in enumerate(FAMILIES) if f in RADICAL_FAMILIES), radicand_size(name)) \
+        if family in RADICAL_FAMILIES else (rank, 0)
+    return tier + (rank, _family_key(name, family))
+
+
+def _family_key(name, family):
+    inner = name[3:-1] if name.startswith("\\Q(") and name.endswith(")") else name
+    if family == "imprimitive quartic":
+        return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
+    if family == "nested radical":
+        m = _NESTED_RE.match(inner)
+        return (int(m[1]),) + _nested_key(*_abd(m, 2))
+    if family == "compositum":
+        return tuple(generator_key(g) for g in inner.split(", "))
+    return tuple((abs(k), k < 0) for k in map(int, re.findall(r"-?\d+", name)))
+
+
 def merge_data(path, new_rows, replace=False):
     """Merge {label: name} into the data file at path, and return (added, replaced, kept).
 
-    A label already in the file keeps its name, unless the new name is from a family that
-    wins over it (see FAMILIES) or replace is True.
+    A label already in the file keeps its name, unless the new name is better (see
+    name_key: a family that wins over it, or a simpler name of the same family) or
+    replace is True. So without replace, the result does not depend on the order of merges.
 
     The read-merge-write holds a lock on the data directory, so several scripts can run
     at once without losing each other's rows.
@@ -121,7 +228,7 @@ def _merge_data(path, new_rows, replace):
             added += 1
         elif old == name:
             continue
-        elif replace or family_rank(name) < family_rank(old):
+        elif replace or name_key(name) < name_key(old):
             replaced += 1
         else:
             kept += 1

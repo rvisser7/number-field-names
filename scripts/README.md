@@ -5,7 +5,8 @@ except for the scripts that compute fields, which need PARI through cypari2:
 either `pip install cypari2`, or run them with `sage -python` since SageMath ships cypari2.
 
 - `nf_names.py`: shared helpers (reading, writing and merging data files, LMFDB sort order, quadratic names).
-  `FAMILIES` sets which name wins when a field is in more than one family.
+  `FAMILIES` lists the families, and `name_key` orders the names of one field (best first): by family, except
+  that among the radical families the smallest radicands come first, then by the simplest parameters.
 - `pari_fields.py`: PARI setup, and the `Field` record (name, polredabs polynomial, discriminant, signature).
 - `progress.py`: the progress line the long-running scripts print on stderr.
 - `pipeline.py`: the shared end of the newer `generate_*.py` scripts (LMFDB lookup, merge, summary).
@@ -71,3 +72,16 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   as separate processes, at most `--parallel` at a time, each logging to `logs/<n>-<script>.log`, e.g.
   `sage -python scripts/run_jobs.py jobs.txt --parallel 4 --source db`. `--source` is added to each job that does not
   give one, and `--dry-run` only lists the jobs.
+- `recognise.py`: the backward direction: given a field (polynomial and ramified primes), test each family and
+  return the certified names, and the best one. Pure and Kummer fields: the radicand is a product of ramified
+  primes with exponents below $n$ (fixed by the discriminant for tame primes), sieved with small primes and
+  checked with `nfroots`. Imprimitive quartics: from $K = L(\sqrt{\beta})$, the simplest $A + B\sqrt{D}$ in
+  $\beta L^{*2}$ is found by running over the ideals of small norm in the right class and the units of $L$.
+  Multiquadratic: the quadratic subfields. Composita: pairs of named subfields.
+- `name_lmfdb_fields.py`: runs `recognise.py` over the LMFDB fields of the given degrees and merges the best names,
+  every `--batch` fields. Fields come from the database (`--max-disc`, `--min-disc`, `--galois` narrow the query)
+  or from a `label|coeffs` file (`--input`); `--shard i/k` splits a degree between jobs, `--families` picks the tests,
+  `--only-unnamed` skips fields that already have a name, and `--print` prints the names instead of merging.
+  It takes about 1 ms per field in degree 3 to 5, 2 to 4 ms in degree 6 to 9 and 20 ms in degree 12,
+  mostly computing subfields for composita (leave those out with `--families` for a faster pass). E.g.
+  `sage -python scripts/name_lmfdb_fields.py --degrees 6 --max-disc 10^8 --shard 0/4`.

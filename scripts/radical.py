@@ -77,7 +77,8 @@ def radical_factors(m, bound):
     out = []
     for K in pure_fields(m, bound):
         a = int(K.name.split("{")[-1].rstrip("})"))
-        out.append((a, pari.Polrev(list(K.coeffs))))
+        if a != -1:  # Q(\sqrt[m]{-1}) is cyclotomic, and named so in composita
+            out.append((a, pari.Polrev(list(K.coeffs))))
     return out
 
 

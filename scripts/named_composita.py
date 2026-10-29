@@ -11,10 +11,10 @@ and we take K = K_1 K_2 where K_1 is cyclotomic or quadratic. As K_1 is Galois t
 is unique up to isomorphism, and we keep it only when K_1 and K_2 are linearly disjoint
 (degree [K_1 : Q][K_2 : Q]), naming it \\Q(g_1, g_2). Pairs that another family already
 covers are skipped (two quadratics: multiquadratic; two cyclotomic: cyclotomic; quadratic and
-odd degree pure: radical compositum). A field
-reached several ways keeps the first name, with blocks ordered as listed above and then by
-size, and where families overlap the other family's name wins (see FAMILIES in nf_names.py),
-e.g. Q(\\zeta_{5}, \\sqrt{-3}) = Q(\\zeta_{15}) and Q(\\zeta_{3}, \\sqrt[3]{2}) is Kummer.
+odd degree pure: radical compositum). A field reached several ways keeps the name with the
+smallest name_key (see nf_names.py): blocks in the order listed above, each simplest first.
+Where families overlap the other family's name wins (see FAMILIES in nf_names.py), e.g.
+Q(\\zeta_{5}, \\sqrt{-3}) = Q(\\zeta_{15}) and Q(\\zeta_{3}, \\sqrt[3]{2}) is Kummer.
 """
 
 from dataclasses import dataclass
@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from cyclotomic import conductors
 from imprimitive_quartic import imprimitive_quartic_fields
 from multiquadratic import sqrt_symbol
-from nf_names import is_squarefree
+from nf_names import is_squarefree, name_key
 from pari_fields import make_field, pari, polredabs_coeffs
 from pure import pure_fields
 
@@ -46,9 +46,12 @@ def blocks(max_degree, bound, quartic_bound):
             out.append(Block("quadratic", sqrt_symbol(d), pari(f"x^2 - ({d})"), 2))
     for m in range(3, max_degree // 2 + 1):
         for K in pure_fields(m, bound):
-            out.append(Block("pure", K.name[3:-1], pari.Polrev(list(K.coeffs)), m))
+            if not K.name.endswith("{-1})"):  # Q(\sqrt[m]{-1}) is cyclotomic, already above
+                out.append(Block("pure", K.name[3:-1], pari.Polrev(list(K.coeffs)), m))
+    cyclotomic = {polredabs_coeffs(b.poly) for b in out if b.degree == 4}
     for K in imprimitive_quartic_fields(quartic_bound):
-        if r"\sqrt[4]" not in K.name:  # pure quartics are already above
+        # pure quartics are already above, and so are Q(\zeta_5) = Q(\sqrt{-5 + 2\sqrt{5}}) etc.
+        if r"\sqrt[4]" not in K.name and K.coeffs not in cyclotomic:
             out.append(Block("quartic", K.name[3:-1], pari.Polrev(list(K.coeffs)), 4))
     # cyclotomic blocks by degree, so the smallest come first
     cyc = sorted((b for b in out if b.kind == "cyclotomic"), key=lambda b: b.degree)
@@ -79,5 +82,7 @@ def named_composita_fields(max_degree, bound, quartic_bound, progress=None):
         if len(comp) > 1 or pari.poldegree(f) != b1.degree * b2.degree:
             continue  # not linearly disjoint
         coeffs = polredabs_coeffs(pari.polredbest(f))
-        fields.setdefault(coeffs, r"\Q(%s, %s)" % (b1.symbol, b2.symbol))
+        name = r"\Q(%s, %s)" % (b1.symbol, b2.symbol)
+        if coeffs not in fields or name_key(name) < name_key(fields[coeffs]):
+            fields[coeffs] = name
     return [make_field(name, c) for c, name in fields.items()]
