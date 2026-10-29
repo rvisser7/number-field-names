@@ -34,3 +34,10 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   as in the LMFDB, e.g. `\Q(\sqrt{1 + 2i})`.
 - `generate_imprimitive_quartic.py`: looks these up in the LMFDB and merges them into `data/degree4.txt`, e.g.
   `python3 scripts/generate_imprimitive_quartic.py --bound 50 --source db`.
+- `multiquadratic.py`: the fields $\mathbb{Q}(\sqrt{d_1}, \dots, \sqrt{d_k})$, $k \geq 2$, named as in the LMFDB's `field_pretty`:
+  the $d_i$ are the greedy basis of the quadratic subfields ordered by $|d|$ (positive first), and $\sqrt{-1}$ is
+  written $i$, e.g. `\Q(i, \sqrt{2})`. Runs over the fields whose basis has every $|d_i| \leq N$; the discriminant
+  comes from the conductor-discriminant formula, so no polynomial is needed to decide whether to look a field up.
+- `generate_multiquadratic.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_multiquadratic.py --degrees 4 --bound 200 --source db`. The number of fields grows fast with
+  the degree (bound 200, 40, 20, 15 give about 27000, 12000, 3200, 500 fields in degree 4, 8, 16, 32).
