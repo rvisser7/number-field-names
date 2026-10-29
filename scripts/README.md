@@ -68,7 +68,10 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_nested_radical.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_nested_radical.py --n 3 --bound 20 --source db` (about 13 s of PARI for $n = 3$, bound 20).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
-  to show what fraction has a name.
+  to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
+  lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
+  unnamed fields as examples (`--max-disc 10^8` for a quicker look, `--top` and `--examples` for more rows). This
+  shows which family to add next.
 - `run_jobs.py`: runs the jobs in a jobs file (one `generate_*.py` script and its arguments per line, like `../jobs.txt`)
   as separate processes, at most `--parallel` at a time, each logging to `logs/<n>-<script>.log`, e.g.
   `sage -python scripts/run_jobs.py jobs.txt --parallel 4 --source db`. `--source` is added to each job that does not

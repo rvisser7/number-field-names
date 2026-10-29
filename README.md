@@ -71,6 +71,7 @@ See [`scripts/README.md`](scripts/README.md).
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
 python3 -m unittest discover tests     # run the tests (most tests need cypari2)
 python3 scripts/coverage.py --db       # how many fields are named, per degree and family
+python3 scripts/coverage.py --by-galois --degrees 3-8 --max-disc 10^8   # unnamed fields per Galois group
 ```
 
 To run many generators at once, list them in a jobs file (see [`jobs.txt`](jobs.txt)) and run
