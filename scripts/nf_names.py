@@ -86,6 +86,7 @@ FAMILIES = [
      re.compile(r"^\\Q\((i|\\sqrt\{-?\d+\}|\\sqrt\[\d+\]\{-?\d+\}), \\sqrt\[\d+\]\{-?\d+\}\)$")),
     # Anything else of the form \Q(g_1, g_2), as written by named_composita.py
     ("compositum", re.compile(r"^\\Q\(.+, .+\)$")),
+    ("nested radical", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
 ]
 
 

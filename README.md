@@ -38,6 +38,7 @@ When a field has names from more than one family, the family higher up in the ta
 | Kummer | `\Q(\zeta_{n}, \sqrt[n]{a})`, e.g. `\Q(\zeta_{3}, \sqrt[3]{2})`, `\Q(i, \sqrt[4]{2})` | script ready (`generate_kummer.py`) |
 | Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
 | Composita of named fields | `\Q(g_1, g_2)`, e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
+| Nested radicals, $n \geq 3$ | `\Q(\sqrt[n]{a + b\sqrt{d}})`, e.g. `\Q(\sqrt[3]{1 + \sqrt{2}})`, `\Q(\sqrt[4]{1 + 4i})` | script ready (`generate_nested_radical.py`) |
 
 Every name other than those read off the label should be certified by checking that the
 polynomial it describes defines the same field as the LMFDB polynomial (e.g. with PARI's `nfisisom`).

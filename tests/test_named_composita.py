@@ -57,7 +57,9 @@ class TestNamedComposita(unittest.TestCase):
             self.assertEqual(K.degree, pari.poldegree(pari.Polrev(list(K.coeffs))))
 
     def test_ranked_below_other_families(self):
-        self.assertEqual(family_rank(r"\Q(\zeta_{5}, \sqrt{2})"), len(FAMILIES) - 1)
+        names = [name for name, _ in FAMILIES]
+        self.assertEqual(family_rank(r"\Q(\zeta_{5}, \sqrt{2})"), names.index("compositum"))
+        self.assertGreater(family_rank(r"\Q(\zeta_{5}, \sqrt{2})"), names.index("radical compositum"))
         self.assertLess(family_rank(r"\Q(\zeta_{15})"), family_rank(r"\Q(\zeta_{5}, \sqrt{-3})"))
 
 

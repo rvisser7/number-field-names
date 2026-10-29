@@ -24,3 +24,6 @@ generate_imprimitive_quartic.py --bound 100
 generate_kummer.py --n 3,4,6 --bound 100
 generate_composita.py --pairs 2x3 --bound 50
 generate_named_composita.py --max-degree 16 --bound 20
+generate_nested_radical.py --n 3 --bound 30
+generate_nested_radical.py --n 4 --bound 15
+generate_nested_radical.py --n 5,6 --bound 8

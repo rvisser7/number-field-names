@@ -59,6 +59,12 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   degree first, then quadratics by $|d|$, then pure, then quartic). Other families' names win over these.
 - `generate_named_composita.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_named_composita.py --max-degree 16 --bound 20 --source db`.
+- `nested_radical.py`: the fields $\mathbb{Q}(\sqrt[n]{a + b\sqrt{d}})$ of degree $2n$, $n \geq 3$, with $|a|, |b|, |d| \leq N$ and $d$
+  squarefree, the analogue of the imprimitive quartics for higher $n$. Each field gets its simplest $(a, b, d)$: $b > 0$, no
+  $p^n$ dividing both $a$ and $b$, smallest $\max(|a|, |b|)$, then $|b|$, $|a|$, $|d|$, then $a > 0$, $d > 0$. Fields that $a = 0$
+  also gives are pure and left to `generate_pure.py`; $d = -1$ is written $i$.
+- `generate_nested_radical.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_nested_radical.py --n 3 --bound 20 --source db` (about 13 s of PARI for $n = 3$, bound 20).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name.
 - `run_jobs.py`: runs the jobs in a jobs file (one `generate_*.py` script and its arguments per line, like `../jobs.txt`)
