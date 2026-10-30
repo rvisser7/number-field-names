@@ -94,6 +94,16 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_nested_quartic.py`: looks these up in the LMFDB and merges them into `data/degree8.txt`, e.g.
   `python3 scripts/generate_nested_quartic.py --bound 2 --quartic-bound 5 --source db` (about 0.5 s per quartic
   field for bound 2).
+- `cardano.py`: cubic fields by Cardano's formula, $\mathbb{Q}(\sqrt[3]{u + e\sqrt{d}} + \sqrt[3]{u - e\sqrt{d}})$: the field of
+  $x^3 - 3kx - 2u$ with $u^2 - k^3 = e^2 d$, $d$ squarefree. Every cubic field has such a name; $d$ is fixed by the field
+  ($\mathbb{Q}(\sqrt{-3d})$ is its quadratic resolvent, so $d = 1$ for pure cubics, which are left out, and $d = -3$ for cyclic ones),
+  and $d < 0$ for totally real cubics. The simplest $(u, e)$ wins: $u > 0$, no $p^3$ dividing $u$ and $e$, smallest $\max(u, e)$,
+  then $e$, then $u$. The numbers grow with the discriminant, so only names whose numbers are all at most a bound (100 by
+  default) are kept: of the 883 cubic fields with $|\mathrm{disc}| \leq 5000$ that are neither pure nor cyclotomic, 95 get a name
+  with bound 100, and 326 with bound 1000.
+- `generate_cardano.py`: looks these up in the LMFDB and merges them into `data/degree3.txt`, e.g.
+  `python3 scripts/generate_cardano.py --bound 100 --max-size 100 --source db` (runs over $0 < u \leq$ `--bound` and
+  $0 < |k| \leq$ `--k-bound`, about 7000 polynomials a second).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
   lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
@@ -116,6 +126,8 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   simplest $A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}$ in $\beta L^{*2}$ is found as for the quartics, over the ideals of $L$
   of small norm (at most 5000) and its units; only run when $K$ has no other name. Quadratic extensions of a pure
   field $F$, and of an imprimitive quartic $F$: the same, over the ideals and units of $F$ (and its automorphisms).
+  Cardano cubics: the trace zero elements of $\mathcal{O}_K$ of small $T_2$ norm (`qfminim`), each scaled to a polynomial
+  $x^3 - 3kx - 2u$; `--cardano-bound` sets the largest number allowed in a name (0 for none).
   Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
   (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
   $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.

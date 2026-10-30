@@ -116,6 +116,10 @@ FAMILIES = [
     ("nested quartic",
      _Checked(r"^\\Q\(\\sqrt\{.*\\sqrt\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}.*\}\)$",
               lambda m: parse_nested_quartic(m[0]) is not None)),
+    # \Q(\sqrt[3]{u + e\sqrt{d}} + \sqrt[3]{u - e\sqrt{d}}), as cardano.py writes them
+    ("cardano cubic",
+     _Checked(r"^\\Q\(\\sqrt\[3\]\{(\d+) \+ (\d*)(i|\\sqrt\{-?\d+\})\} \+ \\sqrt\[3\]\{(\d+) - (\d*)(i|\\sqrt\{-?\d+\})\}\)$",
+              lambda m: m[1] == m[4] and m[2] == m[5] and m[3] == m[6] and m[2] != "1")),
 ]
 
 
@@ -345,6 +349,20 @@ def parse_nested_quartic(name):
     return tuple(coeffs) + (A, B, D)
 
 
+def cardano_key(u, e, d):
+    # as in cardano.py: the smallest radicand u + e\\sqrt{d}
+    return (max(abs(u), abs(e)), abs(e), abs(u), abs(d), d < 0)
+
+
+def parse_cardano(name):
+    """(u, e, d) from a name written by cardano.py, or None."""
+    m = FAMILIES[[f for f, _ in FAMILIES].index("cardano cubic")][1].match(name)
+    if not m:
+        return None
+    d = -1 if m[3] == "i" else int(m[3][6:-1])
+    return int(m[1]), int(m[2] or 1), d
+
+
 def _family_key(name, family):
     inner = name[3:-1] if name.startswith("\\Q(") and name.endswith(")") else name
     if family == "nested biquadratic":
@@ -353,6 +371,8 @@ def _family_key(name, family):
         return nested_pure_key(*parse_nested_pure(name))
     if family == "nested quartic":
         return nested_quartic_key(*parse_nested_quartic(name))
+    if family == "cardano cubic":
+        return cardano_key(*parse_cardano(name))
     if family == "imprimitive quartic":
         return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
     if family == "nested radical":

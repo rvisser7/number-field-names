@@ -27,7 +27,7 @@ class TestNames(unittest.TestCase):
 
     def test_family(self):
         self.assertEqual(FAMILIES[family_rank(r"\Q(\sqrt{1 + \sqrt{1 + \sqrt{2}}})")][0], "nested quartic")
-        self.assertEqual(FAMILIES[-1][0], "nested quartic")  # every other name wins
+        self.assertEqual(FAMILIES[-2][0], "nested quartic")  # every other name wins (but Cardano: cubic)
 
 
 @unittest.skipIf(nested_quartic_fields is None, "needs cypari2")

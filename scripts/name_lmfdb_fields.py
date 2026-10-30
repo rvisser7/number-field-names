@@ -5,7 +5,8 @@ This is the backward direction (see recognise.py). Instead of generating fields 
 parameters up to a bound, it goes through the LMFDB fields of the given degrees and, for each,
 decides which families it belongs to. For cyclotomic, real cyclotomic, multiquadratic, pure,
 Kummer, imprimitive quartic, nested radical, nested biquadratic and nested quartic (octics),
-and nested pure (quadratic over pure) fields the answer is complete, with no bound
+and nested pure (quadratic over pure) fields the answer is complete, with no bound. Cubic
+fields with no other name get a Cardano name when it is small enough (--cardano-bound)
 (nested radicals with too many candidates are skipped, see recognise.py). Composita come from
 named subfields, with two or more generators.
 
@@ -39,6 +40,7 @@ from nf_names import FAMILIES, data_path, family_rank, merge_data, read_data
 from pari_fields import pari  # noqa: F401 (checks cypari2 is there)
 from cypari2 import PariError
 from progress import Progress, fmt_time
+import recognise
 from recognise import FAMILY_TESTS, best_name, from_label
 
 
@@ -140,7 +142,11 @@ def main():
                         help="overwrite names already in the data files")
     parser.add_argument("--progress-every", type=float, default=30, metavar="SECONDS",
                         help="when not on a terminal, how often to print progress (default 30)")
+    parser.add_argument("--cardano-bound", type=int, default=recognise.MAX_CARDANO_SIZE,
+                        help="largest number in a Cardano cubic name (default %(default)s; 0 for "
+                             "no bound), see cardano.py")
     args = parser.parse_args()
+    recognise.MAX_CARDANO_SIZE = args.cardano_bound or None
 
     families = [f.replace("_", " ") for f in args.families.split(",")]
     unknown = set(families) - set(FAMILY_TESTS)

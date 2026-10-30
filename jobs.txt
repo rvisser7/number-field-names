@@ -8,6 +8,7 @@
 # for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields,
 # nested radicals, octics over a biquadratic or imprimitive quartic field and quadratic extensions of pure fields, and finds composita from named subfields, so it can replace most of the jobs above.
 # (split big degrees with --shard )
+# Cubics with no other name get a Cardano name when every number in it is at most --cardano-bound (100).
 name_lmfdb_fields.py --degrees 3 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 4 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 5 --only-unnamed --batch 100
@@ -88,6 +89,9 @@ generate_nested_pure.py --n 5 --bound 1 --m-bound 20    # about 0.6s per m (15 o
 
 # Octics over an imprimitive quartic Q(sqrt(a + b*sqrt(D) + c*sqrt(A + B*sqrt(D)) + d*sqrt(D)*sqrt(A + B*sqrt(D))))
 generate_nested_quartic.py --bound 2 --quartic-bound 5    # about 0.5s per quartic field (211 of them)
+
+# Cubics by Cardano's formula Q(cbrt(u + e*sqrt(d)) + cbrt(u - e*sqrt(d))), only names with every number <= --max-size
+generate_cardano.py --bound 1000 --k-bound 200 --max-size 100   # about 1 min of PARI
 
 
 # Cyclotomic Q(zeta_n) and real cyclotomic Q(zeta_n)^+

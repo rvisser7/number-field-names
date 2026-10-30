@@ -12,6 +12,7 @@ try:
     from nested_biquadratic import nested_biquadratic_fields, nested_biquadratic_name
     from nested_pure import nested_pure_fields, nested_pure_name
     from nested_quartic import nested_quartic_fields, nested_quartic_name
+    from cardano import cardano_fields, cardano_name
     from nested_radical import nested_name, nested_radical_fields
     from named_composita import named_composita_fields
     from pari_fields import make_field, pari, polredabs_coeffs
@@ -20,7 +21,8 @@ try:
     from recognise import (FAMILY_TESTS, all_names, best_name, composita_names, cyclotomic_conductor,
                            from_coeffs, from_label, kummer_params, multiquadratic_basis,
                            nested_biquadratic_params, nested_params, nested_pure_params,
-                           nested_quartic_params, pure_radicand, quartic_params)
+                           nested_quartic_params, pure_radicand, quartic_params,
+                           cardano_cubic_params)
 except SystemExit:  # cypari2 not installed
     best_name = None
 
@@ -83,6 +85,15 @@ class TestRecognise(unittest.TestCase):
         fields = nested_quartic_fields(1, 2)[::4]  # a sample, to keep the test quick
         self.check(fields, lambda K: nested_quartic_name(*nested_quartic_params(K)))
 
+    def test_cardano(self):
+        # the forward names, as far as the bound on u and k reaches (the backward name is
+        # simpler when it needs a larger u or k)
+        for F in cardano_fields(15):
+            p = cardano_cubic_params(from_coeffs(F.coeffs), None)
+            self.assertLessEqual(name_key(cardano_name(*p)), name_key(F.name))
+        self.assertEqual(cardano_cubic_params(field("x^3 - x - 1"), None), (44, 12, 69))
+        self.assertIsNone(cardano_cubic_params(field("x^3 + x + 1"), 100))  # needs 108
+
     def test_kummer(self):
         self.check(kummer_fields([3, 4], 10), lambda K: kummer_name(*kummer_params(K)))
 
@@ -127,6 +138,7 @@ class TestRecognise(unittest.TestCase):
             "(x^2 - 1)^3 - 2": r"\Q(\sqrt{1 + \sqrt[3]{2}})",
             "x^6 - 2": r"\Q(\sqrt[6]{2})",                                # = \Q(\sqrt{\sqrt[3]{2}})
             "((x^2 - 1)^2 - 1)^2 - 2": r"\Q(\sqrt{1 + \sqrt{1 + \sqrt{2}}})",
+            "x^3 - 3*x - 4": r"\Q(\sqrt[3]{2 + \sqrt{3}} + \sqrt[3]{2 - \sqrt{3}})",
             "polcompositum(x^3 - 2, x^5 - 3)[1]": r"\Q(\sqrt[3]{2}, \sqrt[5]{3})",
         }
         for poly, name in examples.items():

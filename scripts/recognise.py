@@ -44,6 +44,9 @@ without their bounds:
   * nested quartic Q(\\sqrt{a + b\\sqrt{D} + c\\gamma + d\\sqrt{D}\\gamma}), gamma = \\sqrt{A + B\\sqrt{D}}, for
     octics with an imprimitive quartic subfield F: the same, over the ideals, units and
     automorphisms of F (see nested_quartic_params).
+  * Cardano cubics Q(\\sqrt[3]{u + e\\sqrt{d}} + \\sqrt[3]{u - e\\sqrt{d}}): the elements of trace 0 of
+    small T2 norm, each scaled to x^3 - 3kx - 2u (see cardano_cubic_params), only when every
+    number is at most MAX_CARDANO_SIZE.
 """
 
 import itertools
@@ -51,6 +54,7 @@ import math
 import re
 from dataclasses import dataclass, field
 
+from cardano import cardano_name, cardano_params, cardano_size
 from cyclotomic import conductors, cyclotomic_name, real_cyclotomic_name
 from imprimitive_quartic import quartic_name
 from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol, squarefree_part
@@ -58,7 +62,7 @@ from nested_biquadratic import nested_biquadratic_name
 from nested_pure import nested_pure_name
 from nested_quartic import nested_quartic_name
 from nested_radical import nested_name
-from nf_names import (generator_key, name_key, nested_biquadratic_key, nested_pure_key, nested_quartic_key,
+from nf_names import (cardano_key, generator_key, name_key, nested_biquadratic_key, nested_pure_key, nested_quartic_key,
                       pure_basis, radicand_size)
 from pari_fields import is_isomorphic, pari, polredabs_coeffs
 from pure import pure_name
@@ -66,7 +70,7 @@ from radical import compositum_name, kummer_name, root_symbol, zeta_symbol
 
 FAMILY_TESTS = ["cyclotomic", "real cyclotomic", "multiquadratic", "pure", "kummer",
                 "imprimitive quartic", "nested radical", "composita", "nested biquadratic",
-                "nested pure", "nested quartic"]
+                "nested pure", "nested quartic", "cardano cubic"]
 MAX_CANDIDATES = 10 ** 6  # radicands to sieve for one field before giving up
 # nested radicals: candidates for beta to test for one quadratic subfield before giving up. Only
 # fields with many radicals get there (e.g. Q(\\zeta_5, \\sqrt{2}, \\sqrt{3})), and those have
@@ -75,6 +79,9 @@ MAX_NESTED_CANDIDATES = 20000  # e.g. 6^5 (about 1s), not 8^5
 # nested biquadratic: the largest ideal norm to search. Above it (only for large d_i and
 # coefficients) the name found is still right, but there may be a simpler one.
 MAX_IDEAL_NORM = 5000
+# Cardano cubics: the largest number allowed in a name (they grow with the discriminant);
+# None for no bound. name_lmfdb_fields.py --cardano-bound sets it.
+MAX_CARDANO_SIZE = 100
 
 
 @dataclass
@@ -1001,6 +1008,61 @@ def nested_quartic_params(K):
     return best
 
 
+# ---------------------------------------------------------------- cardano cubics
+
+def cardano_cubic_params(K, max_size=None):
+    """(u, e, d) with K = Q(\\sqrt[3]{u + e\\sqrt{d}} + \\sqrt[3]{u - e\\sqrt{d}}), simplest as in
+    cardano.py, or None if K is not cubic, is pure (d = 1), or has no such name with every
+    number at most max_size (default MAX_CARDANO_SIZE; None for no bound).
+
+    d is fixed by K (Q(\\sqrt{-3d}) is the quadratic resolvent). A name with max(u, e) <= M comes
+    from alpha = \\sqrt[3]{u + e\\sqrt{d}} + \\sqrt[3]{u - e\\sqrt{d}}, an integral element of trace 0
+    with minimal polynomial x^3 - 3kx - 2u, |k|^3 <= M^2 (1 + |d|), so every |sigma(alpha)|
+    is at most 2 max(\\sqrt{3|k|}, M^(1/3)) (Fujiwara's bound). So we run over the elements of
+    trace 0 of small T2 (qfminim on that lattice of rank 2), for M = 4, 16, 64, ... until a
+    name with max(u, e) <= M is found."""
+    if K.degree != 3:
+        return None
+    max_size = MAX_CARDANO_SIZE if max_size == "default" else max_size
+    disc = K.disc_abs * (-1 if K.r1 == 1 else 1)
+    d = int(pari.core(-3 * disc))
+    if d == 1 or (max_size is not None and abs(d) > max_size):
+        return None
+    f = K.poly()
+    zk = pari("(nf) -> nf.zk")(pari.nfinit(f))
+    tr = [int(pari.trace(pari.Mod(z, f))) for z in zk]
+    L = pari.matkerint(pari.matrix(1, 3, tr))
+    xs = [pari.Mod(sum(L[i, j] * zk[i] for i in range(3)), f) for j in range(2)]
+    cv = [pari.conjvec(x, precision=256) for x in xs]
+    G = pari.matrix(2, 2, [sum(pari.real(a * pari.conj(b)) for a, b in zip(cv[i], cv[j]))
+                           for i in range(2) for j in range(2)])
+    qfminim = pari("(G, B) -> qfminim(G, B, , 2)[3]")
+    best, M = None, 4
+    while True:
+        if max_size is not None:
+            M = min(M, max_size)
+        kmax = (M * M * (1 + abs(d))) ** (1 / 3)
+        T2 = 3 * (2 * max((3 * kmax) ** 0.5, M ** (1 / 3))) ** 2
+        vs = qfminim(G, T2 * (1 + 1e-9) + 1)
+        for j in range(int(pari.matsize(vs)[1])):
+            alpha = sum(int(pari.round(vs[i, j])) * xs[i] for i in range(2))
+            cp = pari.charpoly(alpha)
+            p, q = int(pari.polcoef(cp, 1)), int(pari.polcoef(cp, 0))
+            t = (1 if p % 3 == 0 else 3)
+            t *= 1 if (q * t ** 3) % 2 == 0 else 2
+            params = cardano_params(-q * t ** 3 // 2, -p * t * t // 3)
+            if params and (best is None or cardano_key(*params) < cardano_key(*best)):
+                best = params
+        if best and max(best[0], best[1]) <= M:
+            break
+        if max_size is not None and M >= max_size:
+            return None
+        M *= 4
+    if max_size is not None and cardano_size(*best) > max_size:
+        return None
+    return best
+
+
 # ---------------------------------------------------------------- composita from subfields
 
 _BLOCKS = {}
@@ -1174,7 +1236,8 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
     skipped: nothing after a cyclotomic, real cyclotomic or multiquadratic name (those
     families win over all the radical ones), and nested radicals only below the smallest
     radicand_size found (they rank last among the radical families), and nested biquadratic,
-    nested pure and nested quartic names (the last families) only when there is no other name.
+    nested pure, nested quartic and Cardano names (the last families) only when there is no
+    other name.
     """
     names = []
     if "cyclotomic" in families:
@@ -1222,6 +1285,10 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
         params = nested_quartic_params(K)
         if params:
             names.append(nested_quartic_name(*params))
+    if "cardano cubic" in families and not (best_only and names):
+        params = cardano_cubic_params(K, "default")
+        if params:
+            names.append(cardano_name(*params))
     return list(dict.fromkeys(names))
 
 
