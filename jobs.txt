@@ -32,6 +32,28 @@ name_lmfdb_fields.py --degrees 22 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 23 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 24 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 25 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 26 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 27 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 28 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 29 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 30 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 31 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 32 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 33 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 34 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 35 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 36 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 37 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 38 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 39 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 40 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 41 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 42 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 43 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 44 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 45 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 46 --only-unnamed --batch 100
+name_lmfdb_fields.py --degrees 47 --only-unnamed --batch 100
 
 # Multiquadratic Q(sqrt(d1), ..., sqrt(dr)), one job per degree
 generate_multiquadratic.py --degrees 4 --bound 300   # Deg 4,  bound 100 takes ~26min;
