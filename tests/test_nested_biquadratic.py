@@ -28,8 +28,9 @@ class TestNames(unittest.TestCase):
 
     def test_family(self):
         self.assertEqual(FAMILIES[family_rank(Q8)][0], "nested biquadratic")
-        # every other name wins (nested pure fields have degree 2n, n an odd prime, so never 8)
-        self.assertEqual([f for f, _ in FAMILIES][-2:], ["nested biquadratic", "nested pure"])
+        # every other name wins, except nested pure (degree 2n, n an odd prime, so never 8) and
+        # nested quartic, which this one wins over
+        self.assertEqual([f for f, _ in FAMILIES][-3:], ["nested biquadratic", "nested pure", "nested quartic"])
         self.assertLess(name_key(r"\Q(i, \sqrt{1 + \sqrt{2}})"), name_key(r"\Q(\sqrt{i + \sqrt{2}})"))
 
 

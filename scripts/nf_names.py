@@ -111,6 +111,11 @@ FAMILIES = [
     ("nested pure",
      _Checked(r"^\\Q\(\\sqrt\{(-?\d+|-?\d*\\sqrt\[\d+\]\{\d+\})( [+-] \d*\\sqrt\[\d+\]\{\d+\})+\}\)$",
               lambda m: parse_nested_pure(m[0]) is not None)),
+    # \Q(\sqrt{a + b\sqrt{D} + c\sqrt{A + B\sqrt{D}} + d\sqrt{D}\sqrt{A + B\sqrt{D}}}), as nested_quartic.py
+    # writes them
+    ("nested quartic",
+     _Checked(r"^\\Q\(\\sqrt\{.*\\sqrt\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}.*\}\)$",
+              lambda m: parse_nested_quartic(m[0]) is not None)),
 ]
 
 
@@ -302,12 +307,52 @@ def parse_nested_pure(name):
     return n, mm, tuple(coeffs)
 
 
+def parse_quartic(name):
+    """(A, B, D) from an imprimitive quartic name \\Q(\\sqrt{A + B\\sqrt{D}}), or None."""
+    m = _QUARTIC_RE.match(name[3:-1]) if name.startswith("\\Q(") and name.endswith(")") else None
+    return _abd(m, 1) if m else None
+
+
+def nested_quartic_key(a, b, c, d, A, B, D):
+    # as in nested_quartic.py: the smallest coefficients, then the simplest quartic, then signs
+    return ((max(abs(a), abs(b), abs(c), abs(d)), abs(d), abs(c), abs(b), abs(a)) + _nested_key(A, B, D)
+            + (c < 0, d < 0, b < 0, a < 0))
+
+
+def parse_nested_quartic(name):
+    """(a, b, c, d, A, B, D) from a name written by nested_quartic.py, or None."""
+    m = re.match(r"^\\Q\(\\sqrt\{(.*)\}\)$", name)
+    if not m:
+        return None
+    roots = list(re.finditer(_ROOT, m[1]))
+    if not roots or any(r[0] != roots[0][0] for r in roots):
+        return None
+    A, B, D = _abd(roots[0], 1)
+    inner = m[1].replace(roots[0][0], "G")
+    sym = re.escape("i" if D == -1 else r"\sqrt{%d}" % D)
+    terms = re.findall(r"(^-?| [+-] )(\d*)(%s)?(G)?" % sym, inner)
+    terms = [t for t in terms if t != ("", "", "", "")]
+    if "".join("".join(t) for t in terms) != inner:
+        return None
+    coeffs, last = [0, 0, 0, 0], -1
+    for sign, c, root, g in terms:
+        k = (1 if root else 0) + (2 if g else 0)
+        if k <= last or (k == 0 and not c) or (k and c in ("0", "1")) or c.startswith("0"):
+            return None  # out of order, or a coefficient written oddly
+        coeffs[k], last = (-1 if "-" in sign else 1) * int(c or 1), k
+    if not (coeffs[2] or coeffs[3]) or sum(1 for c in coeffs if c) < 2:
+        return None
+    return tuple(coeffs) + (A, B, D)
+
+
 def _family_key(name, family):
     inner = name[3:-1] if name.startswith("\\Q(") and name.endswith(")") else name
     if family == "nested biquadratic":
         return nested_biquadratic_key(*parse_nested_biquadratic(name))
     if family == "nested pure":
         return nested_pure_key(*parse_nested_pure(name))
+    if family == "nested quartic":
+        return nested_quartic_key(*parse_nested_quartic(name))
     if family == "imprimitive quartic":
         return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
     if family == "nested radical":

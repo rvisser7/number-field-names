@@ -85,6 +85,15 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_nested_pure.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_nested_pure.py --n 3 --bound 5 --m-bound 100 --source db` (about 1 ms per field tried,
   $(2N + 1)^n$ for each $m$).
+- `nested_quartic.py`: the octic fields $\mathbb{Q}(\sqrt{a + b\sqrt{D} + c\gamma + d\sqrt{D}\gamma})$, $\gamma = \sqrt{A + B\sqrt{D}}$:
+  quadratic extensions of an imprimitive quartic $F = \mathbb{Q}(\gamma)$ (every octic with a C4 or D4 quartic subfield is
+  one), with $|a|, |b|, |c|, |d| \leq N$ and $F$ from `imprimitive_quartic_fields(N')`. $(A, B, D)$ is $F$'s own name, $c$ or $d$
+  is nonzero, and there are at least two terms. Each field gets its simplest coefficients: smallest
+  $\max(|a|, |b|, |c|, |d|)$, then $|d|, |c|, |b|, |a|$, then the simplest quartic, then $c \geq 0$ ($\gamma \to -\gamma$ flips $c$
+  and $d$), $d, b, a \geq 0$. Every other family's name wins, also the octics over a biquadratic field.
+- `generate_nested_quartic.py`: looks these up in the LMFDB and merges them into `data/degree8.txt`, e.g.
+  `python3 scripts/generate_nested_quartic.py --bound 2 --quartic-bound 5 --source db` (about 0.5 s per quartic
+  field for bound 2).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
   lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
@@ -106,7 +115,7 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   Octics over a biquadratic field $L$: $K = L(\gamma)$ with $\gamma^2 = \beta \in L$ (from the automorphism of $K/L$), and the
   simplest $A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}$ in $\beta L^{*2}$ is found as for the quartics, over the ideals of $L$
   of small norm (at most 5000) and its units; only run when $K$ has no other name. Quadratic extensions of a pure
-  field $F$: the same, over the ideals and units of $F$.
+  field $F$, and of an imprimitive quartic $F$: the same, over the ideals and units of $F$ (and its automorphisms).
   Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
   (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
   $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.

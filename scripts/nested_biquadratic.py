@@ -19,7 +19,8 @@ Conventions:
 
 Many of these fields also have a name of another family (multiquadratic, cyclotomic,
 composita such as Q(i, \\sqrt{1 + \\sqrt{2}}), ...). This family comes last in FAMILIES, so
-those names win, and only octics with no other name are named this way.
+those names win, and only octics with no other name are named this way (this name wins over
+nested_quartic.py's, for octics that have both).
 """
 
 import itertools

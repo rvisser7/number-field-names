@@ -41,6 +41,9 @@ without their bounds:
   * nested pure Q(\\sqrt{A_0 + A_1\\sqrt[n]{m_1} + ...}), n an odd prime, for fields of degree 2n
     with a pure subfield F of degree n: the same, over the ideals and units of F (see
     nested_pure_params).
+  * nested quartic Q(\\sqrt{a + b\\sqrt{D} + c\\gamma + d\\sqrt{D}\\gamma}), gamma = \\sqrt{A + B\\sqrt{D}}, for
+    octics with an imprimitive quartic subfield F: the same, over the ideals, units and
+    automorphisms of F (see nested_quartic_params).
 """
 
 import itertools
@@ -53,16 +56,17 @@ from imprimitive_quartic import quartic_name
 from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol, squarefree_part
 from nested_biquadratic import nested_biquadratic_name
 from nested_pure import nested_pure_name
+from nested_quartic import nested_quartic_name
 from nested_radical import nested_name
-from nf_names import (generator_key, name_key, nested_biquadratic_key, nested_pure_key, pure_basis,
-                      radicand_size)
+from nf_names import (generator_key, name_key, nested_biquadratic_key, nested_pure_key, nested_quartic_key,
+                      pure_basis, radicand_size)
 from pari_fields import is_isomorphic, pari, polredabs_coeffs
 from pure import pure_name
 from radical import compositum_name, kummer_name, root_symbol, zeta_symbol
 
 FAMILY_TESTS = ["cyclotomic", "real cyclotomic", "multiquadratic", "pure", "kummer",
                 "imprimitive quartic", "nested radical", "composita", "nested biquadratic",
-                "nested pure"]
+                "nested pure", "nested quartic"]
 MAX_CANDIDATES = 10 ** 6  # radicands to sieve for one field before giving up
 # nested radicals: candidates for beta to test for one quadratic subfield before giving up. Only
 # fields with many radicals get there (e.g. Q(\\zeta_5, \\sqrt{2}, \\sqrt{3})), and those have
@@ -892,6 +896,111 @@ def nested_pure_params(K):
     return best
 
 
+# ---------------------------------------------------------------- nested quartic
+
+_BNF_QUARTIC = {}
+
+
+def _bnf_quartic(A, B, D):
+    """(bnf, basis, automorphisms) for F = Q(gamma) = Q(w), gamma = \\sqrt{A + B\\sqrt{D}}, with
+    basis the Mods 1, s, gamma, s gamma (s = \\sqrt{D} = (gamma^2 - A) / B), and the
+    automorphisms of F as polynomials in w."""
+    if (A, B, D) not in _BNF_QUARTIC:
+        f = pari(f"(w^2 - ({A}))^2 - ({B})^2 * ({D})")
+        g = pari.Mod(pari("w"), f)
+        s = (g ** 2 - A) / B
+        _BNF_QUARTIC[(A, B, D)] = (pari.bnfinit(f, 1), (pari.Mod(1, f), s, g, s * g), pari.nfgaloisconj(f))
+    return _BNF_QUARTIC[(A, B, D)]
+
+
+def _quartic_coeffs(z, e, A, B, D, degree=4):
+    """(a, b, c, d) with z = a + b s + c gamma + d s gamma, from the traces Tr(z e_j); the
+    Gram matrix of the basis is diag(4, 4D) and 4 [[A, BD], [BD, AD]]. degree is that of the
+    field z is in, a multiple of 4."""
+    t = [pari.trace(z * x) * 4 / degree for x in e]
+    a, b = t[0] / 4, t[1] / (4 * D)
+    det = 16 * D * (A * A - B * B * D)
+    c = (4 * A * D * t[2] - 4 * B * D * t[3]) / det
+    d = (4 * A * t[3] - 4 * B * D * t[2]) / det
+    return (a, b, c, d)
+
+
+def _simplest_quartic_extension(beta, A, B, D):
+    """The simplest (a, b, c, d, A, B, D) (nested_quartic.simplicity) with
+    a + b s + c gamma + d s gamma in sigma(beta) F^{*2} for an automorphism sigma of F, and c or d
+    nonzero and at least two terms, where F = Q(gamma), gamma = \\sqrt{A + B\\sqrt{D}}, and beta is
+    given by its coefficients.
+
+    The embeddings send s to e\\sqrt{D} and gamma to +-\\sqrt{A + eB\\sqrt{D}} (e = +-1), and the
+    sum over the sign of gamma cancels the cross terms: sum |sigma(z)|^2 is
+    2 sum_e (|a + be\\sqrt{D}|^2 + |c + de\\sqrt{D}|^2 g_e) with g_e = |A + eB\\sqrt{D}|. When every
+    |coefficient| <= M that is at most M^2 (4 (1 + |D|) + 2 (1 + |D|)(g_+ + g_-) + 4 \\sqrt{|D|} |g_+ - g_-|);
+    see _simplest_in_square_class.
+    """
+    bnf, e, auts = _bnf_quartic(A, B, D)
+    z = _integral_coeffs(beta)
+    z = sum(c * x for c, x in zip(z, e))
+    root = complex(D) ** 0.5
+    gp, gm = abs(A + B * root), abs(A - B * root)
+    weight = 4 * (1 + abs(D)) + 2 * (1 + abs(D)) * (gp + gm) + 4 * abs(D) ** 0.5 * abs(gp - gm)
+    mod = e[0].mod()
+
+    def params(z):
+        best = None
+        for t in auts:
+            cs = _integral_coeffs(_quartic_coeffs(pari.Mod(pari.subst(pari.lift(z), "w", t), mod), e, A, B, D))
+            if (cs[2] or cs[3]) and sum(1 for c in cs if c) >= 2:
+                p = cs + (A, B, D)
+                if best is None or nested_quartic_key(*p) < nested_quartic_key(*best):
+                    best = p
+        return best
+
+    return _simplest_in_square_class(
+        bnf, z, params, lambda p: nested_quartic_key(*p),
+        lambda p: max(abs(c) for c in p[:4]) ** 2 * weight)
+
+
+def nested_quartic_params(K):
+    """(a, b, c, d, A, B, D) with K = Q(\\sqrt{a + b\\sqrt{D} + c\\sqrt{A + B\\sqrt{D}} + d\\sqrt{D}\\sqrt{A + B\\sqrt{D}}}),
+    simplest as in nested_quartic.py, or None if K is not an octic with an imprimitive quartic
+    subfield.
+
+    For each such subfield F = Q(gamma), K = F(delta) with tau(delta) = -delta for the
+    automorphism tau of K/F (a quadratic extension), so beta = delta^2 is in F."""
+    if K.degree != 8:
+        return None
+    fy = K.poly()
+    theta = pari.Mod(pari("y"), fy)
+    auts = None
+    best, seen = None, set()
+    for g, _ in K.subfields(4):
+        abd = quartic_params(from_coeffs(polredabs_coeffs(g), K.ramps))
+        if not abd or abd in seen:
+            continue  # (the roots below are all the embeddings of that quartic field)
+        seen.add(abd)
+        A, B, D = abd
+        if auts is None:
+            auts = [t for t in pari.nfgaloisconj(fy) if t != pari("y")]
+        done = set()
+        for gamma in pari.nfroots(fy, pari(f"(x^2 - ({A}))^2 - ({B})^2 * ({D})")):
+            if gamma in done:
+                continue  # the same subfield as a root before (gamma -> -gamma etc.)
+            gamma = pari.Mod(gamma, fy)
+            done |= {pari.lift(pari.subst(t, "w", gamma)) for t in _bnf_quartic(A, B, D)[2]}
+            for t in auts:
+                if pari.Mod(pari.subst(pari.lift(gamma), "y", t), fy) == gamma:
+                    break
+            else:
+                continue
+            delta = theta - pari.Mod(t, fy)
+            s = (gamma ** 2 - A) / B
+            beta = _quartic_coeffs(delta ** 2, (1, s, gamma, s * gamma), A, B, D, degree=8)
+            p = _simplest_quartic_extension(beta, A, B, D)
+            if p and (best is None or nested_quartic_key(*p) < nested_quartic_key(*best)):
+                best = p
+    return best
+
+
 # ---------------------------------------------------------------- composita from subfields
 
 _BLOCKS = {}
@@ -1064,8 +1173,8 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
     With best_only, tests that cannot give a better name than one already found are
     skipped: nothing after a cyclotomic, real cyclotomic or multiquadratic name (those
     families win over all the radical ones), and nested radicals only below the smallest
-    radicand_size found (they rank last among the radical families), and nested biquadratic
-    and nested pure names (the last families) only when there is no other name.
+    radicand_size found (they rank last among the radical families), and nested biquadratic,
+    nested pure and nested quartic names (the last families) only when there is no other name.
     """
     names = []
     if "cyclotomic" in families:
@@ -1109,6 +1218,10 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
         params = nested_pure_params(K)
         if params:
             names.append(nested_pure_name(*params))
+    if "nested quartic" in families and not (best_only and names):
+        params = nested_quartic_params(K)
+        if params:
+            names.append(nested_quartic_name(*params))
     return list(dict.fromkeys(names))
 
 

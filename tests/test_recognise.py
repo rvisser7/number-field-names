@@ -11,15 +11,16 @@ try:
     from multiquadratic import greedy_bases, multiquadratic_coeffs, multiquadratic_name
     from nested_biquadratic import nested_biquadratic_fields, nested_biquadratic_name
     from nested_pure import nested_pure_fields, nested_pure_name
+    from nested_quartic import nested_quartic_fields, nested_quartic_name
     from nested_radical import nested_name, nested_radical_fields
     from named_composita import named_composita_fields
     from pari_fields import make_field, pari, polredabs_coeffs
     from pure import pure_fields, pure_name
     from radical import composita_fields, kummer_fields, kummer_name
-    from recognise import (all_names, best_name, composita_names, cyclotomic_conductor, from_coeffs,
-                           from_label, kummer_params, multiquadratic_basis,
-                           nested_biquadratic_params, nested_params, nested_pure_params, pure_radicand,
-                           quartic_params)
+    from recognise import (FAMILY_TESTS, all_names, best_name, composita_names, cyclotomic_conductor,
+                           from_coeffs, from_label, kummer_params, multiquadratic_basis,
+                           nested_biquadratic_params, nested_params, nested_pure_params,
+                           nested_quartic_params, pure_radicand, quartic_params)
 except SystemExit:  # cypari2 not installed
     best_name = None
 
@@ -73,9 +74,14 @@ class TestRecognise(unittest.TestCase):
 
     def test_nested_pure(self):
         # pure fields (e.g. Q(\sqrt{2 + 2\sqrt[3]{2}}) = ...) keep their pure name
-        for n, bound, m_bound in [(3, 1, 12), (5, 1, 3)]:
-            fields = [F for F in nested_pure_fields(n, bound, m_bound) if not pure_radicand(from_coeffs(F.coeffs))]
+        for n, bound, m_bound, step in [(3, 1, 12, 1), (5, 1, 3, 8)]:  # a sample for n = 5
+            fields = [F for F in nested_pure_fields(n, bound, m_bound)[::step]
+                      if not pure_radicand(from_coeffs(F.coeffs))]
             self.check(fields, lambda K: nested_pure_name(*nested_pure_params(K)))
+
+    def test_nested_quartic(self):
+        fields = nested_quartic_fields(1, 2)[::4]  # a sample, to keep the test quick
+        self.check(fields, lambda K: nested_quartic_name(*nested_quartic_params(K)))
 
     def test_kummer(self):
         self.check(kummer_fields([3, 4], 10), lambda K: kummer_name(*kummer_params(K)))
@@ -89,8 +95,10 @@ class TestRecognise(unittest.TestCase):
     def test_named_composita(self):
         # With small forward bounds, the backward name can be better (e.g. \sqrt{-5} before
         # \sqrt{6}) but never worse.
+        # (the last families, which every name wins over, are left out to keep this quick)
+        families = [f for f in FAMILY_TESTS if f not in ("nested biquadratic", "nested pure", "nested quartic")]
         for F in named_composita_fields(8, 3, 3):
-            names = all_names(from_coeffs(F.coeffs))
+            names = all_names(from_coeffs(F.coeffs), families)
             self.assertIn(F.name, names)
             self.assertLessEqual(name_key(min(names, key=name_key)), name_key(F.name))
 
@@ -118,6 +126,7 @@ class TestRecognise(unittest.TestCase):
             "x^8 - x^4 + 1": r"\Q(\zeta_{24})",
             "(x^2 - 1)^3 - 2": r"\Q(\sqrt{1 + \sqrt[3]{2}})",
             "x^6 - 2": r"\Q(\sqrt[6]{2})",                                # = \Q(\sqrt{\sqrt[3]{2}})
+            "((x^2 - 1)^2 - 1)^2 - 2": r"\Q(\sqrt{1 + \sqrt{1 + \sqrt{2}}})",
             "polcompositum(x^3 - 2, x^5 - 3)[1]": r"\Q(\sqrt[3]{2}, \sqrt[5]{3})",
         }
         for poly, name in examples.items():

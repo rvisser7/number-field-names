@@ -30,7 +30,8 @@ class TestNames(unittest.TestCase):
     def test_family(self):
         name = r"\Q(\sqrt{-1 + \sqrt[3]{2}})"
         self.assertEqual(FAMILIES[family_rank(name)][0], "nested pure")
-        self.assertEqual(FAMILIES[-1][0], "nested pure")  # every other name wins
+        # every other name wins (the nested biquadratic and quartic fields have degree 8, never 2n)
+        self.assertEqual([f for f, _ in FAMILIES][-3:], ["nested biquadratic", "nested pure", "nested quartic"])
 
 
 @unittest.skipIf(nested_pure_fields is None, "needs cypari2")
