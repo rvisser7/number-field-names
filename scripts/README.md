@@ -76,6 +76,15 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_nested_biquadratic.py`: looks these up in the LMFDB and merges them into `data/degree8.txt`, e.g.
   `python3 scripts/generate_nested_biquadratic.py --bound 3 --basis-bound 10 --source db` (about 2 s per
   biquadratic field for bound 3).
+- `nested_pure.py`: the fields $\mathbb{Q}(\sqrt{A_0 + A_1\sqrt[n]{m_1} + \dots + A_{n-1}\sqrt[n]{m_{n-1}}})$ of degree $2n$, $n$ an
+  odd prime: quadratic extensions of a pure field $F = \mathbb{Q}(\sqrt[n]{m})$ (every field of degree $2n$ with a pure
+  subfield of degree $n$ is one), with $|A_k| \leq N$ and $m \leq N'$. $m$ is $F$'s pure radicand, and $m_k$ is the $n$-th power
+  free part of $m^k$, so for $m = 12$ the basis is $1, \sqrt[3]{12}, \sqrt[3]{18}$. $\beta$ is not rational and has at least
+  two terms (a single term gives a pure field, e.g. $\sqrt{\sqrt[3]{2}} = \sqrt[6]{2}$). Each field gets its simplest
+  coefficients: smallest $\max |A_k|$, then $|A_{n-1}|, \dots, |A_0|$, then positive signs. Every other family's name wins.
+- `generate_nested_pure.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_nested_pure.py --n 3 --bound 5 --m-bound 100 --source db` (about 1 ms per field tried,
+  $(2N + 1)^n$ for each $m$).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
   lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
@@ -96,7 +105,8 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   (e.g. $\mathbb{Q}(\zeta_5, \sqrt{2}, \sqrt{3})$, which has a compositum name) are skipped.
   Octics over a biquadratic field $L$: $K = L(\gamma)$ with $\gamma^2 = \beta \in L$ (from the automorphism of $K/L$), and the
   simplest $A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}$ in $\beta L^{*2}$ is found as for the quartics, over the ideals of $L$
-  of small norm (at most 5000) and its units; only run when $K$ has no other name.
+  of small norm (at most 5000) and its units; only run when $K$ has no other name. Quadratic extensions of a pure
+  field $F$: the same, over the ideals and units of $F$.
   Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
   (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
   $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.

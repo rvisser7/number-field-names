@@ -107,6 +107,10 @@ FAMILIES = [
     ("nested biquadratic",
      _Checked(r"^\\Q\(\\sqrt\{(-?\d+|-?\d*(?:i|\\sqrt\{-?\d+\}))( [+-] \d*(?:i|\\sqrt\{-?\d+\}))+\}\)$",
               lambda m: parse_nested_biquadratic(m[0]) is not None)),
+    # \Q(\sqrt{A_0 + A_1\sqrt[n]{m_1} + ...}), as nested_pure.py writes them
+    ("nested pure",
+     _Checked(r"^\\Q\(\\sqrt\{(-?\d+|-?\d*\\sqrt\[\d+\]\{\d+\})( [+-] \d*\\sqrt\[\d+\]\{\d+\})+\}\)$",
+              lambda m: parse_nested_pure(m[0]) is not None)),
 ]
 
 
@@ -232,10 +236,78 @@ def parse_nested_biquadratic(name):
     return (A,) + tuple(coeff.get(d, 0) for d in ds) + (ds[0], ds[1])
 
 
+def nth_power_free(a, n):
+    """(c, b) with a = c^n b and b n-th power free, for an integer a > 0."""
+    c, b, p = 1, 1, 2
+    while p * p <= a:
+        e = 0
+        while a % p == 0:
+            a //= p
+            e += 1
+        c, b = c * p ** (e // n), b * p ** (e % n)
+        p += 1
+    return c, b * a
+
+
+def pure_basis(n, m):
+    """[(c_k, m_k)] for k = 0..n-1, with m^k = c_k^n m_k and m_k n-th power free, so that
+    \\sqrt[n]{m^k} = c_k \\sqrt[n]{m_k} (as in nested_pure.py; m > 0)."""
+    return [nth_power_free(m ** k, n) for k in range(n)]
+
+
+def nested_pure_key(n, m, coeffs):
+    # as in nested_pure.py: the smallest coefficients (the last first), then n and m, then signs
+    return ((max(abs(c) for c in coeffs),) + tuple(abs(c) for c in coeffs[::-1]) + (n, m)
+            + tuple(c < 0 for c in coeffs[1:] + coeffs[:1]))
+
+
+def parse_nested_pure(name):
+    """(n, m, (A_0, ..., A_{n-1})) from a name written by nested_pure.py, or None."""
+    m = re.match(r"^\\Q\(\\sqrt\{(.*)\}\)$", name)
+    if not m:
+        return None
+    terms = re.findall(r"(^-?| [+-] )(\d*)(\\sqrt\[(\d+)\]\{(\d+)\})?", m[1])
+    if "".join(sign + c + (sym or "") for sign, c, sym, _, _ in terms) != m[1]:
+        return None
+    A0, radicals = 0, []
+    for i, (sign, c, sym, n, r) in enumerate(terms):
+        k = (-1 if "-" in sign else 1) * int(c or 1)
+        if not sym:
+            if i or not c or c.startswith("0"):
+                return None  # the rational term comes first
+            A0 = k
+        elif c in ("0", "1") or c.startswith("0"):
+            return None
+        else:
+            radicals.append((int(n), int(r), k))
+    ns = {n for n, _, _ in radicals}
+    if len(ns) != 1:
+        return None
+    n = ns.pop()
+    if n < 3 or any(n % p == 0 for p in range(2, n)):
+        return None  # n an odd prime
+    r = radicals[0][1]
+    # the pure field's radicand: the smallest of the n-th power free parts of r^k
+    mm = min(nth_power_free(r ** k, n)[1] for k in range(1, n))
+    position = {mk: k for k, (_, mk) in enumerate(pure_basis(n, mm)) if k}
+    coeffs = [A0] + [0] * (n - 1)
+    ks = []
+    for _, r, a in radicals:
+        if r not in position:
+            return None
+        ks.append(position[r])
+        coeffs[position[r]] = a
+    if ks != sorted(set(ks)):
+        return None  # not in the order of the basis
+    return n, mm, tuple(coeffs)
+
+
 def _family_key(name, family):
     inner = name[3:-1] if name.startswith("\\Q(") and name.endswith(")") else name
     if family == "nested biquadratic":
         return nested_biquadratic_key(*parse_nested_biquadratic(name))
+    if family == "nested pure":
+        return nested_pure_key(*parse_nested_pure(name))
     if family == "imprimitive quartic":
         return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
     if family == "nested radical":

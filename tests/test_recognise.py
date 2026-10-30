@@ -10,6 +10,7 @@ try:
     from imprimitive_quartic import imprimitive_quartic_fields, quartic_name
     from multiquadratic import greedy_bases, multiquadratic_coeffs, multiquadratic_name
     from nested_biquadratic import nested_biquadratic_fields, nested_biquadratic_name
+    from nested_pure import nested_pure_fields, nested_pure_name
     from nested_radical import nested_name, nested_radical_fields
     from named_composita import named_composita_fields
     from pari_fields import make_field, pari, polredabs_coeffs
@@ -17,7 +18,8 @@ try:
     from radical import composita_fields, kummer_fields, kummer_name
     from recognise import (all_names, best_name, composita_names, cyclotomic_conductor, from_coeffs,
                            from_label, kummer_params, multiquadratic_basis,
-                           nested_biquadratic_params, nested_params, pure_radicand, quartic_params)
+                           nested_biquadratic_params, nested_params, nested_pure_params, pure_radicand,
+                           quartic_params)
 except SystemExit:  # cypari2 not installed
     best_name = None
 
@@ -69,6 +71,12 @@ class TestRecognise(unittest.TestCase):
                   if not multiquadratic_basis(from_coeffs(F.coeffs))]
         self.check(fields, lambda K: nested_biquadratic_name(*nested_biquadratic_params(K)))
 
+    def test_nested_pure(self):
+        # pure fields (e.g. Q(\sqrt{2 + 2\sqrt[3]{2}}) = ...) keep their pure name
+        for n, bound, m_bound in [(3, 1, 12), (5, 1, 3)]:
+            fields = [F for F in nested_pure_fields(n, bound, m_bound) if not pure_radicand(from_coeffs(F.coeffs))]
+            self.check(fields, lambda K: nested_pure_name(*nested_pure_params(K)))
+
     def test_kummer(self):
         self.check(kummer_fields([3, 4], 10), lambda K: kummer_name(*kummer_params(K)))
 
@@ -108,6 +116,8 @@ class TestRecognise(unittest.TestCase):
             "x^8 - 24*x^6 + 144*x^4 - 288*x^2 + 144":  # Q(\sqrt{(2 + \sqrt{2})(3 + \sqrt{3})}), Q8
                 r"\Q(\sqrt{6 + 2\sqrt{3} + \sqrt{6}})",
             "x^8 - x^4 + 1": r"\Q(\zeta_{24})",
+            "(x^2 - 1)^3 - 2": r"\Q(\sqrt{1 + \sqrt[3]{2}})",
+            "x^6 - 2": r"\Q(\sqrt[6]{2})",                                # = \Q(\sqrt{\sqrt[3]{2}})
             "polcompositum(x^3 - 2, x^5 - 3)[1]": r"\Q(\sqrt[3]{2}, \sqrt[5]{3})",
         }
         for poly, name in examples.items():

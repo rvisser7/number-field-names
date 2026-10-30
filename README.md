@@ -47,6 +47,7 @@ does not depend on which script ran first.
 | Composita of named fields | `\Q(g_1, g_2)` (backward also `\Q(g_1, g_2, g_3)`), e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
 | Nested radicals, $n \geq 3$ | `\Q(\sqrt[n]{a + b\sqrt{d}})`, e.g. `\Q(\sqrt[3]{1 + \sqrt{2}})`, `\Q(\sqrt[4]{1 + 4i})` | script ready (`generate_nested_radical.py`) |
 | Octics over a biquadratic field | `\Q(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}})`, e.g. the quaternion field `\Q(\sqrt{6 + 2\sqrt{3} + \sqrt{6}})`; only for octics with no other name | script ready (`generate_nested_biquadratic.py`) |
+| Quadratic over a pure field, $n$ an odd prime | `\Q(\sqrt{A_0 + A_1\sqrt[n]{m_1} + \dots})`, e.g. `\Q(\sqrt{1 + \sqrt[3]{2}})`, `\Q(\sqrt{-1 + 2\sqrt[3]{18}})`; only for fields with no other name | script ready (`generate_nested_pure.py`) |
 
 ## Two ways to find names
 
@@ -54,8 +55,8 @@ does not depend on which script ran first.
   $\mathbb{Q}(\sqrt[n]{m})$), compute each field, and look it up in the LMFDB.
 * **Backward**, `name_lmfdb_fields.py`: go through the LMFDB fields of a degree and test each one
   against every family. For cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive
-  quartic fields, nested radicals and octics over a biquadratic field this is complete, with no
-  bound; composita come from named
+  quartic fields, nested radicals, octics over a biquadratic field and quadratic extensions of
+  pure fields this is complete, with no bound; composita come from named
   subfields, including ones with three or more generators such as `\Q(\sqrt{2}, \sqrt{3}, \sqrt[3]{5})`.
   For example
   `sage -python scripts/name_lmfdb_fields.py --degrees 3-6 --max-disc 10^8`.
