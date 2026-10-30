@@ -67,6 +67,15 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   $d = -1$ is written $i$.
 - `generate_nested_radical.py`: looks these up in the LMFDB and merges them into the data files, e.g.
   `python3 scripts/generate_nested_radical.py --n 3 --bound 20 --source db` (about 13 s of PARI for $n = 3$, bound 20).
+- `nested_biquadratic.py`: the octic fields $\mathbb{Q}(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}})$, quadratic
+  extensions of a biquadratic field $L = \mathbb{Q}(\sqrt{d_1}, \sqrt{d_2})$ (every octic with a biquadratic subfield is
+  one), with $|A|, |B|, |C|, |D| \leq N$ and $|d_1|, |d_2| \leq N'$. $d_1, d_2$ is the greedy basis of $L$ and $d_3$ the
+  squarefree part of $d_1 d_2$; at least two of $B, C, D$ are nonzero. Each field gets its simplest parameters: smallest
+  $\max(|A|, |B|, |C|, |D|)$, then $|D|$, $|C|$, $|B|$, $|A|$, then the smallest basis, then $B, C \geq 0$ (conjugating flips
+  the signs of two of $B, C, D$), $A \geq 0$, $D \geq 0$. Every other family's name wins over these.
+- `generate_nested_biquadratic.py`: looks these up in the LMFDB and merges them into `data/degree8.txt`, e.g.
+  `python3 scripts/generate_nested_biquadratic.py --bound 3 --basis-bound 10 --source db` (about 2 s per
+  biquadratic field for bound 3).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
   lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
@@ -85,6 +94,9 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   powers ($S$ the primes above the ramified primes and $n$), cut down by $n$-th power conditions at small primes and
   checked with `nffactor` and `nfroots`, then simplified as for the quartics. Fields with more than 20000 candidates
   (e.g. $\mathbb{Q}(\zeta_5, \sqrt{2}, \sqrt{3})$, which has a compositum name) are skipped.
+  Octics over a biquadratic field $L$: $K = L(\gamma)$ with $\gamma^2 = \beta \in L$ (from the automorphism of $K/L$), and the
+  simplest $A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}$ in $\beta L^{*2}$ is found as for the quartics, over the ideals of $L$
+  of small norm (at most 5000) and its units; only run when $K$ has no other name.
   Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
   (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
   $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.

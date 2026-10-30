@@ -103,6 +103,10 @@ FAMILIES = [
     # Anything else of the form \Q(g_1, g_2), as written by named_composita.py
     ("compositum", re.compile(r"^\\Q\(.+, .+\)$")),
     ("nested radical", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
+    # \Q(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}}), as nested_biquadratic.py writes them
+    ("nested biquadratic",
+     _Checked(r"^\\Q\(\\sqrt\{(-?\d+|-?\d*(?:i|\\sqrt\{-?\d+\}))( [+-] \d*(?:i|\\sqrt\{-?\d+\}))+\}\)$",
+              lambda m: parse_nested_biquadratic(m[0]) is not None)),
 ]
 
 
@@ -192,8 +196,46 @@ def name_key(name):
     return tier + (rank, _family_key(name, family))
 
 
+def nested_biquadratic_key(A, B, C, D, d1, d2):
+    # as in nested_biquadratic.py: the smallest coefficients, then the smallest basis
+    return (max(abs(A), abs(B), abs(C), abs(D)), abs(D), abs(C), abs(B), abs(A),
+            (abs(d1), -d1), (abs(d2), -d2), B < 0, C < 0, A < 0, D < 0)
+
+
+def parse_nested_biquadratic(name):
+    """(A, B, C, D, d_1, d_2) from a name written by nested_biquadratic.py, or None."""
+    from multiquadratic import order_key, squarefree_part  # (multiquadratic imports this module)
+    m = re.match(r"^\\Q\(\\sqrt\{(.*)\}\)$", name)
+    if not m:
+        return None
+    terms = re.findall(r"(^-?| [+-] )(\d*)(i|\\sqrt\{(-?\d+)\})?", m[1])
+    if "".join(sign + c + (sym or "") for sign, c, sym, _ in terms) != m[1]:
+        return None
+    A, coeff = 0, {}
+    for sign, c, sym, d in terms:
+        k = (-1 if "-" in sign else 1) * int(c or 1)
+        if not sym:
+            if A or coeff or not c:
+                return None  # the rational term comes first, once
+            A = k
+            continue
+        d = -1 if sym == "i" else int(d)
+        if d in coeff or d in (0, 1) or squarefree_part(d) != d or c in ("0", "1") or c.startswith("0"):
+            return None
+        coeff[d] = k
+    if len(coeff) < 2 or len(coeff) > 3:
+        return None
+    x, y = list(coeff)[:2]
+    ds = sorted({x, y, squarefree_part(x * y)}, key=order_key)
+    if len(ds) != 3 or set(coeff) - set(ds) or list(coeff) != [d for d in ds if d in coeff]:
+        return None  # not in the order sqrt(d_1), sqrt(d_2), sqrt(d_3)
+    return (A,) + tuple(coeff.get(d, 0) for d in ds) + (ds[0], ds[1])
+
+
 def _family_key(name, family):
     inner = name[3:-1] if name.startswith("\\Q(") and name.endswith(")") else name
+    if family == "nested biquadratic":
+        return nested_biquadratic_key(*parse_nested_biquadratic(name))
     if family == "imprimitive quartic":
         return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
     if family == "nested radical":

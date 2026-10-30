@@ -34,6 +34,10 @@ without their bounds:
     named_composita.py. Also names with three or more generators, from a Galois named subfield
     (quadratic, cyclotomic, multiquadratic, Kummer) and another named subfield, e.g.
     Q(i, \\sqrt[3]{3}, \\sqrt[4]{2}); fewer generators win.
+  * nested biquadratic Q(\\sqrt{A + B\\sqrt{d_1} + C\\sqrt{d_2} + D\\sqrt{d_3}}), for octics with a
+    biquadratic subfield L: as for the imprimitive quartics, over the ideals and units of L
+    (see nested_biquadratic_params). Every other name wins, so this only runs when there is
+    none.
 """
 
 import itertools
@@ -43,20 +47,24 @@ from dataclasses import dataclass, field
 
 from cyclotomic import conductors, cyclotomic_name, real_cyclotomic_name
 from imprimitive_quartic import quartic_name
-from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol
+from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol, squarefree_part
+from nested_biquadratic import nested_biquadratic_name
 from nested_radical import nested_name
-from nf_names import generator_key, name_key, radicand_size
+from nf_names import generator_key, name_key, nested_biquadratic_key, radicand_size
 from pari_fields import is_isomorphic, pari, polredabs_coeffs
 from pure import pure_name
 from radical import compositum_name, kummer_name, root_symbol, zeta_symbol
 
 FAMILY_TESTS = ["cyclotomic", "real cyclotomic", "multiquadratic", "pure", "kummer",
-                "imprimitive quartic", "nested radical", "composita"]
+                "imprimitive quartic", "nested radical", "composita", "nested biquadratic"]
 MAX_CANDIDATES = 10 ** 6  # radicands to sieve for one field before giving up
 # nested radicals: candidates for beta to test for one quadratic subfield before giving up. Only
 # fields with many radicals get there (e.g. Q(\\zeta_5, \\sqrt{2}, \\sqrt{3})), and those have
 # composita names.
 MAX_NESTED_CANDIDATES = 20000  # e.g. 6^5 (about 1s), not 8^5
+# nested biquadratic: the largest ideal norm to search. Above it (only for large d_i and
+# coefficients) the name found is still right, but there may be a simpler one.
+MAX_IDEAL_NORM = 5000
 
 
 @dataclass
@@ -530,26 +538,251 @@ def _nested_betas(K, n, D, s):
     w = int(tu[0])  # gens[0] is a root of unity of order w, the others are free
     units = [k for k in range(1, n) if math.gcd(k, n) == 1]
     primes_n = [int(p) for p in pari.factor(n)[0]]
+    # x^n - beta is reducible when beta is a p-th power in L for a prime p | n, which (up to
+    # the root of unity) is when every free exponent is divisible by p. That only depends on
+    # the coefficients cs mod p, so we find the cs mod p that give no p-th power first.
+    good = {}
+    for p in primes_n:
+        good[p] = set()
+        for r in itertools.product(range(p), repeat=len(cols)):
+            e = [sum(c * col[i] for c, col in zip(r, cols)) % p for i in range(len(gens))]
+            if not (all(x == 0 for x in e[1:]) and (w % p or e[0] == 0)):
+                good[p].add(r)
+    patterns = [(q, sorted(_factor_degrees(K, q))) for q in _unramified_primes(K, 10)]
+
+    def same_splitting(beta):
+        """Whether Q(\\sqrt[n]{beta}) factors like K modulo small primes (if it is K, it does)."""
+        lb = pari.lift(beta)
+        f = (pari("x^%d" % n) - pari.polcoef(lb, 0)) ** 2 - pari.polcoef(lb, 1) ** 2 * D
+        den = int(pari.denominator(pari.content(f)))
+        for q, pattern in patterns:
+            if den % q == 0:
+                continue
+            fac = pari.factormod(f * den, q)
+            if any(int(m) > 1 for m in fac[1]):
+                continue  # q divides disc(f): no conclusion
+            if sorted(int(pari.poldegree(g)) for g in fac[0]) != pattern:
+                return False
+        return True
+
     out, seen = [], set()
     for cs in itertools.product(range(n), repeat=len(cols)):
+        if any(tuple(c % p for c in cs) not in good[p] for p in primes_n):
+            continue
         e = tuple(sum(c * col[i] for c, col in zip(cs, cols)) % n for i in range(len(gens)))
         if e in seen:
             continue
         # beta and beta^k (k prime to n) give the same field: test one of them
-        orbit = {tuple(k * x % n for x in e) for k in units}
-        seen |= orbit
-        # x^n - beta is reducible when beta is a p-th power in L for a prime p | n, which
-        # (up to the root of unity) is when every free exponent is divisible by p
-        if any(all(x % p == 0 for x in e[1:]) and (w % p or e[0] % p == 0) for p in primes_n):
-            continue
+        seen |= {tuple(k * x % n for x in e) for k in units}
         beta = math.prod((gens[i] ** e[i] for i in range(len(gens))), start=pari.Mod(1, mod))
-        # K = L(alpha) when x^n - beta is irreducible over L and has a root in K
-        if (len(pari.nffactor(mod, pari("x^%d" % n) - beta)[0]) == 1
+        # K = L(alpha) when x^n - beta is irreducible over L and has a root in K (after a
+        # quicker test that rules out most beta)
+        if (len(pari.nffactor(mod, pari("x^%d" % n) - beta)[0]) == 1 and same_splitting(beta)
                 and len(pari.nfroots(fy, pari("x^%d" % n) - in_K(beta)))):
             for k in units:
                 lb = pari.lift(beta ** k)
                 out.append((pari.polcoef(lb, 0), pari.polcoef(lb, 1)))
     return out
+
+
+# ---------------------------------------------------------------- nested biquadratic
+
+_BNF4 = {}
+
+
+def _bnf_biquadratic(d1, d2):
+    """(bnf, (s1, s2, s3), (d1, d2, d3)) for L = Q(sqrt(d1), sqrt(d2)) = Q(w), w = s1 + s2,
+    with s_i = sqrt(d_i) as Mods and s3 = s1 s2 / g, where d1 d2 = g^2 d3."""
+    if (d1, d2) not in _BNF4:
+        f = pari(f"(w^2 - ({d1}) - ({d2}))^2 - 4 * ({d1}) * ({d2})")
+        s1 = pari.Mod(pari(f"(w^2 + ({d1}) - ({d2})) / (2 * w)"), f)
+        s2 = pari.Mod(pari("w"), f) - s1
+        d3 = squarefree_part(d1 * d2)
+        g = int(pari.sqrtint(d1 * d2 // d3))
+        _BNF4[(d1, d2)] = (pari.bnfinit(f, 1), (s1, s2, s1 * s2 / g), (d1, d2, d3))
+    return _BNF4[(d1, d2)]
+
+
+def _biquadratic_coeffs(z, s, ds, degree=4):
+    """(A, B, C, D) with z = A + B s1 + C s2 + D s3, from traces (1, s1, s2, s3 are orthogonal
+    for the trace form); degree is that of the field z lives in, a multiple of 4."""
+    return tuple(pari.trace(z * x) / (degree * d) for x, d in zip((1,) + tuple(s), (1,) + tuple(ds)))
+
+
+def _integral_coeffs(cs):
+    """Integers c^2 cs for the smallest c, with no p^2 dividing all of them."""
+    den = 1
+    for x in cs:
+        den = int(pari.lcm(den, pari.denominator(x)))
+    c = math.prod(int(p) ** -(-int(e) // 2) for p, e in zip(*pari.factor(den))) if den > 1 else 1
+    cs = [int(x * c * c) for x in cs]
+    g = 0
+    for x in cs:
+        g = math.gcd(g, x)
+    for p in [int(p) for p in pari.factor(g)[0]] if g > 1 else []:
+        while all(x % (p * p) == 0 for x in cs):
+            cs = [x // (p * p) for x in cs]
+    return tuple(cs)
+
+
+def _conj_logs(z):
+    """log|sigma(z)| at the four complex embeddings of a quartic field, at a precision high
+    enough for elements with large coefficients."""
+    old = pari.set_real_precision(150)
+    try:
+        return [float(pari.log(pari.abs(v))) for v in pari.conjvec(z)]
+    finally:
+        pari.set_real_precision(old)
+
+
+def _square_unit_exponents(z, fu, Q=None):
+    """Exponent vectors k such that z' = z prod fu_j^{2 k_j} has sum |sigma(z')|^2 <= 4 Q (or,
+    without Q, those near the point where all |sigma(z')| are equal)."""
+    r = len(fu)
+    lz = _conj_logs(z)
+    lam = [_conj_logs(u) for u in fu]  # lam[j][i] = log|sigma_i(fu_j)|
+    # r rows (embeddings) on which the unit logs are independent
+    rows = max(itertools.combinations(range(4), r),
+               key=lambda rs: abs(float(pari.matdet(pari.matrix(r, r, [lam[j][i] for i in rs for j in range(r)])))))
+    M = pari.matrix(r, r, [2 * lam[j][i] for i in rows for j in range(r)])
+    Minv = [[float((M ** -1)[j, i]) for i in range(r)] for j in range(r)]
+    if Q is None:
+        mean = sum(lz) / 4
+        k0 = [sum(m * (mean - lz[i]) for m, i in zip(row, rows)) for row in Minv]
+        return itertools.product(*(range(math.floor(x) - 1, math.ceil(x) + 2) for x in k0))
+    # every |sigma(z')| <= T = 2 sqrt(Q), and their product is |N(z)|: a box for the logs
+    lt, ln = math.log(2 * math.sqrt(Q)), sum(lz)
+    lo = [ln - 3 * lt - lz[i] for i in rows]  # bounds for x_i = 2 sum_j k_j lam_ji
+    hi = [lt - lz[i] for i in rows]
+    ranges = []
+    for row in Minv:
+        a = sum(min(m * l, m * h) for m, l, h in zip(row, lo, hi))
+        b = sum(max(m * l, m * h) for m, l, h in zip(row, lo, hi))
+        ranges.append(range(math.floor(a - 1e-6), math.ceil(b + 1e-6) + 1))
+
+    def small(k):
+        logs = [lz[i] + 2 * sum(e * lam[j][i] for j, e in enumerate(k)) for i in range(4)]
+        return sum(math.exp(2 * x) for x in logs) <= 4 * Q * (1 + 1e-6)
+    return filter(small, itertools.product(*ranges))
+
+
+def _simplest_biquadratic(beta, d1, d2):
+    """The simplest (A, B, C, D, d1, d2) (nested_biquadratic.simplicity) with
+    A + B sqrt(d1) + C sqrt(d2) + D sqrt(d3) in beta L^{*2} or a conjugate, and at least two of
+    B, C, D nonzero, where L = Q(sqrt(d1), sqrt(d2)) and beta is given by its coefficients.
+
+    As for _simplest_abd: such a z has ideal J^2 R with R the squarefree part of (beta) and J
+    integral in a fixed class, and Q(z) = A^2 + B^2|d1| + C^2|d2| + D^2|d3| is a quarter of
+    sum |sigma(z)|^2, so |N(z)| <= Q(z)^2 and every |sigma(z)| <= 2 sqrt(Q(z)). With
+    max(|A|, |B|, |C|, |D|) <= M, Q(z) <= M^2 (1 + |d1| + |d2| + |d3|), so once some z is
+    known, running over the J of norm up to that bound over sqrt(N(R)) (at most
+    MAX_IDEAL_NORM), and the units of L, finds the simplest one.
+    """
+    bnf, s, ds = _bnf_biquadratic(d1, d2)
+    z = _integral_coeffs(beta)
+    z = z[0] + sum(c * x for c, x in zip(z[1:], s))
+    fac = pari.idealfactor(bnf, z)
+    I, R = 1, 1
+    for P, e in zip(fac[0], fac[1]):
+        I = pari.idealmul(bnf, I, pari.idealpow(bnf, P, int(e) // 2))
+        if int(e) % 2:
+            R = pari.idealmul(bnf, R, P)
+    norm_R = int(pari.idealnorm(bnf, R))
+    mod = s[0].mod()
+    tu = pari("(b) -> b.tu")(bnf)
+    torsion = [pari.Mod(pari.lift(tu[1]), mod) ** (2 * j) for j in range(int(tu[0]) // 2)]
+    fu = [pari.Mod(pari.lift(u), mod) for u in pari("(b) -> b.fu")(bnf)]
+    weight = 1 + sum(abs(d) for d in ds)
+
+    def best_conjugate(z):
+        A, B, C, D = _integral_coeffs(_biquadratic_coeffs(z, s, ds))
+        ps = [c + (d1, d2) for c in _conjugates(A, B, C, D) if _valid_biquadratic(*c)]
+        return min(ps, key=lambda p: nested_biquadratic_key(*p)) if ps else None
+
+    def candidates(ideals, Q):
+        for J in ideals:
+            cls, nu = pari.bnfisprincipal(bnf, pari.idealdiv(bnf, J, I), 1)
+            if any(int(c) for c in cls):
+                continue
+            z0 = z * pari.nfbasistoalg(bnf, nu) ** 2
+            for k in _square_unit_exponents(z0, fu, Q()):
+                zk = z0 * math.prod((u ** (2 * e) for u, e in zip(fu, k)), start=pari.Mod(1, mod))
+                for t in torsion:
+                    p = best_conjugate(zk * t)
+                    if p:
+                        yield p
+
+    def ideals(lo, hi):  # the integral ideals of norm in (lo, hi]
+        return itertools.chain.from_iterable(pari.ideallist(bnf, hi)[lo:hi])
+
+    best = None
+    # First a few small ideals near the balance point, for a starting bound
+    for p in candidates(ideals(0, 16), lambda: None):
+        if best is None or nested_biquadratic_key(*p) < nested_biquadratic_key(*best):
+            best = p
+    if best is None:
+        return None
+
+    def Q():  # Q(z) <= Q() for every z at least as simple as best
+        return max(abs(c) for c in best[:4]) ** 2 * weight
+
+    # then every ideal up to the bound, which goes down as better ones are found
+    lo, hi = 0, 64
+    while True:
+        max_norm = min(int(Q() / math.sqrt(norm_R)) + 1, MAX_IDEAL_NORM)
+        if lo >= max_norm:
+            break
+        hi = min(hi, max_norm)
+        for p in candidates(ideals(lo, hi), Q):
+            if nested_biquadratic_key(*p) < nested_biquadratic_key(*best):
+                best = p
+        lo, hi = hi, 4 * hi
+    return best
+
+
+def _conjugates(A, B, C, D):
+    return [(A, B, C, D), (A, -B, C, -D), (A, B, -C, -D), (A, -B, -C, D)]
+
+
+def _valid_biquadratic(A, B, C, D):
+    return sum(1 for c in (B, C, D) if c) >= 2
+
+
+def nested_biquadratic_params(K):
+    """(A, B, C, D, d1, d2) with K = Q(\\sqrt{A + B\\sqrt{d_1} + C\\sqrt{d_2} + D\\sqrt{d_3}}),
+    simplest as in nested_biquadratic.py, or None if K is not an octic field with a
+    biquadratic subfield, or is multiquadratic.
+
+    For each biquadratic subfield L, K = L(gamma) with tau(gamma) = -gamma for the
+    automorphism tau of K/L (a quadratic extension), so beta = gamma^2 is in L."""
+    if K.degree != 8:
+        return None
+    quads = dict(_quadratic_subfields(K))
+    if len(quads) < 3 or len(quads) == 7:
+        return None
+    fy = K.poly()
+    theta = pari.Mod(pari("y"), fy)
+    auts = [t for t in pari.nfgaloisconj(fy) if t != pari("y")]
+    best, seen = None, set()
+    for x, y in itertools.combinations(sorted(quads), 2):
+        ds = sorted({x, y, squarefree_part(x * y)}, key=order_key)
+        if ds[2] not in quads or tuple(ds) in seen:
+            continue
+        seen.add(tuple(ds))
+        d1, d2, d3 = ds
+        s1, s2 = quads[d1], quads[d2]
+        for t in auts:
+            if all(pari.Mod(pari.subst(pari.lift(v), "y", t), fy) == v for v in (s1, s2)):
+                break
+        else:
+            continue
+        gamma = theta - pari.Mod(t, fy)
+        g = int(pari.sqrtint(d1 * d2 // d3))
+        beta = _biquadratic_coeffs(gamma ** 2, (s1, s2, s1 * s2 / g), ds, degree=8)
+        p = _simplest_biquadratic(beta, d1, d2)
+        if p and (best is None or nested_biquadratic_key(*p) < nested_biquadratic_key(*best)):
+            best = p
+    return best
 
 
 # ---------------------------------------------------------------- composita from subfields
@@ -724,7 +957,8 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
     With best_only, tests that cannot give a better name than one already found are
     skipped: nothing after a cyclotomic, real cyclotomic or multiquadratic name (those
     families win over all the radical ones), and nested radicals only below the smallest
-    radicand_size found (they rank last among the radical families).
+    radicand_size found (they rank last among the radical families), and nested biquadratic
+    names (the last family) only when there is no other name.
     """
     names = []
     if "cyclotomic" in families:
@@ -760,6 +994,10 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
         params = nested_params(K, max_size)
         if params:
             names.append(nested_name(*params))
+    if "nested biquadratic" in families and not (best_only and names):  # every other name wins
+        params = nested_biquadratic_params(K)
+        if params:
+            names.append(nested_biquadratic_name(*params))
     return list(dict.fromkeys(names))
 
 

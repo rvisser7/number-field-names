@@ -4,7 +4,8 @@
 This is the backward direction (see recognise.py). Instead of generating fields from
 parameters up to a bound, it goes through the LMFDB fields of the given degrees and, for each,
 decides which families it belongs to. For cyclotomic, real cyclotomic, multiquadratic, pure,
-Kummer, imprimitive quartic and nested radical fields the answer is complete, with no bound
+Kummer, imprimitive quartic, nested radical and nested biquadratic (octic) fields the answer
+is complete, with no bound
 (nested radicals with too many candidates are skipped, see recognise.py). Composita come from
 named subfields, with two or more generators.
 

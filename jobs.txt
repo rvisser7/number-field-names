@@ -5,8 +5,8 @@
 
 
 # Naming the LMFDB fields directly (see name_lmfdb_fields.py). This is complete, with no bound,
-# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields and
-# nested radicals, and finds composita from named subfields, so it can replace most of the jobs above. 
+# for cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive quartic fields,
+# nested radicals and octics over a biquadratic field, and finds composita from named subfields, so it can replace most of the jobs above.
 # (split big degrees with --shard )
 name_lmfdb_fields.py --degrees 3 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 4 --only-unnamed --batch 100
@@ -78,6 +78,9 @@ generate_nested_radical.py --n 17 --bound 15
 generate_nested_radical.py --n 18 --bound 15
 generate_nested_radical.py --n 19 --bound 15
 generate_nested_radical.py --n 20 --bound 15
+
+# Octics over a biquadratic field Q(sqrt(A + B*sqrt(d1) + C*sqrt(d2) + D*sqrt(d1*d2)))
+generate_nested_biquadratic.py --bound 3 --basis-bound 10   # about 2s per biquadratic field (~50 of them)
 
 
 # Cyclotomic Q(zeta_n) and real cyclotomic Q(zeta_n)^+
