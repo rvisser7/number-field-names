@@ -5,13 +5,21 @@ except for the scripts that compute fields, which need PARI through cypari2:
 either `pip install cypari2`, or run them with `sage -python` since SageMath ships cypari2.
 
 - `nf_names.py`: shared helpers (reading, writing and merging data files, LMFDB sort order, quadratic names).
+  The data files store names in a compact form (`Q(S{1+2i})` for `\Q(\sqrt{1 + 2i})`, see `compress_name` and
+  `expand_name`); `read_data` returns the full names and `write_data` stores the compact ones, so everything
+  else works with the full names. A name the compact form cannot hold (another macro, say) is stored as it is.
   `FAMILIES` lists the families, and `name_key` orders the names of one field (best first): by family, except
   that among the radical families the smallest radicands come first, then by the simplest parameters.
 - `pari_fields.py`: PARI setup, and the `Field` record (name, polredabs polynomial, discriminant, signature).
 - `progress.py`: the progress line the long-running scripts print on stderr.
 - `pipeline.py`: the shared end of the newer `generate_*.py` scripts (LMFDB lookup, merge, summary).
 - `check_data.py`: checks every `data/degree<n>.txt` is well formed: right header, one row per label,
-  labels of the right degree, in LMFDB order, no duplicates, and balanced brackets in each name.
+  labels of the right degree, in LMFDB order, no duplicates, names in the compact form, and balanced brackets in each name.
+- `compact_data.py`: converts data files written before the compact form, in place (any merge also converts
+  the file it writes, and running it again changes nothing).
+- `export_lmfdb.py`: writes the data with the full LaTeX names for uploading to the LMFDB, one file per degree
+  (`-o export`) and/or all degrees in one file (`--combined export/pretty_names.txt`), e.g.
+  `python3 scripts/export_lmfdb.py -o export --degrees 2-8`. The data files are not changed.
 - `generate_degree2.py`: writes `data/degree2.txt`, either for all fundamental discriminants up to
   `--bound`, or for the labels listed in a file given with `--labels` (e.g. exported from the LMFDB).
 - `pure.py`: finds the distinct pure fields $\mathbb{Q}(\sqrt[n]{m})$ with $|m| \leq B$. Each field is identified by its

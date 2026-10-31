@@ -5,10 +5,17 @@ A data file data/degree<n>.txt looks like
     label|pretty_name
     text|text
 
-    2.0.3.1|\\Q(\\sqrt{-3})
-    2.0.4.1|\\Q(\\sqrt{-1})
+    2.0.3.1|Q(S{-3})
+    2.0.4.1|Q(S{-1})
+
+To save space the names are stored in a compact form: Q, S and Z for the macros \\Q, \\sqrt
+and \\zeta, and no spaces, e.g. Q(S{1+2i}) for \\Q(\\sqrt{1 + 2i}) and Q(Z_{7})^+ for
+\\Q(\\zeta_{7})^+ (see compress_name and expand_name). read_data returns the full LaTeX
+names and write_data stores the compact ones, so everything else works with full names;
+export_lmfdb.py writes the full names for uploading to the LMFDB.
 """
 
+import contextlib
 import fcntl
 import math
 import os
@@ -38,8 +45,56 @@ def label_key(label):
     return (n, D, sign, i, r)
 
 
-def read_data(path):
-    """Return a list of (label, pretty_name) rows from a data file."""
+# The compact form of the names stored in the data files: each macro becomes one capital
+# letter, and the spaces go. expand_name puts the spaces back where the generators put
+# them: after commas, around + (except ^+), and around a - that follows a term (a digit, i,
+# } or )), as in \Q(\sqrt{-3 - 2\sqrt{2}}).
+_MACROS = [(r"\Q", "Q"), (r"\sqrt", "S"), (r"\zeta", "Z")]
+_BINARY_PLUS = re.compile(r"(?<!\^)\+")
+_BINARY_MINUS = re.compile(r"(?<=[0-9i})])-")
+
+
+def expand_name(s):
+    """The full LaTeX name of a compact name, e.g. \\Q(\\sqrt{1 + 2i}) for Q(S{1+2i}).
+
+    A name with a backslash is already full (as in data files written before the compact
+    form) and is returned unchanged.
+    """
+    if "\\" in s:
+        return s
+    for macro, letter in _MACROS:
+        s = s.replace(letter, macro)
+    s = s.replace(",", ", ")
+    s = _BINARY_PLUS.sub(" + ", s)
+    return _BINARY_MINUS.sub(" - ", s)
+
+
+def compress_name(name):
+    """The compact form of a full LaTeX name, e.g. Q(S{1+2i}) for \\Q(\\sqrt{1 + 2i}).
+
+    expand_name(compress_name(name)) == name. A name that would not come back the same
+    (one with other macros, capital letters or unusual spacing) is kept as it is, if that
+    comes back the same, and otherwise raises ValueError.
+    """
+    s = name
+    for macro, letter in _MACROS:
+        s = s.replace(macro, letter)
+    s = s.replace(" ", "")
+    if expand_name(s) == name:
+        return s
+    if expand_name(name) == name:
+        return name
+    raise ValueError(f"cannot store the name {name!r}: it does not survive compress/expand")
+
+
+def is_compact(s):
+    """Whether a stored name is in the compact form (no backslashes or spaces)."""
+    return "\\" not in s and " " not in s
+
+
+def read_data(path, expand=True):
+    """Return a list of (label, pretty_name) rows from a data file, with the full LaTeX names
+    (or the names as stored, if expand is False)."""
     with open(path) as f:
         lines = f.read().split("\n")
     if lines[:3] != [HEADER, TYPES, ""]:
@@ -51,16 +106,22 @@ def read_data(path):
         cells = ln.split("|")
         if len(cells) != 2:
             raise ValueError(f"{path}:{n}: expected 2 columns, got {len(cells)}: {ln!r}")
-        rows.append((cells[0], cells[1]))
+        rows.append((cells[0], expand_name(cells[1]) if expand else cells[1]))
     return rows
 
 
-def write_data(path, rows):
-    """Write (label, pretty_name) rows to a data file, sorted by label.
+def write_data(path, rows, compact=True):
+    """Write (label, pretty_name) rows, with full LaTeX names, to a data file, sorted by label.
 
-    The rows go to a temporary file that then replaces the data file, so a reader never
-    sees a half-written file.
+    The names are stored in the compact form (see compress_name), unless compact is False
+    (as for the LMFDB export). The rows go to a temporary file that then replaces the data
+    file, so a reader never sees a half-written file.
     """
+    rows = [(label, compress_name(name) if compact else name) for label, name in rows]
+    _write_raw(path, rows)
+
+
+def _write_raw(path, rows):
     rows = sorted(rows, key=lambda row: label_key(row[0]))
     tmp = f"{path}.tmp.{os.getpid()}"
     with open(tmp, "w", newline="\n") as f:
@@ -394,27 +455,38 @@ def merge_data(path, new_rows, replace=False):
     The read-merge-write holds a lock on the data directory, so several scripts can run
     at once without losing each other's rows.
     """
-    with open(os.path.join(os.path.dirname(os.path.abspath(path)), ".merge.lock"), "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)  # released when the file is closed
+    with merge_lock(path):
         return _merge_data(path, new_rows, replace)
 
 
+@contextlib.contextmanager
+def merge_lock(path):
+    """Hold the lock on the data directory of path (see merge_data)."""
+    with open(os.path.join(os.path.dirname(os.path.abspath(path)), ".merge.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)  # released when the file is closed
+        yield
+
+
 def _merge_data(path, new_rows, replace):
-    rows = dict(read_data(path)) if os.path.exists(path) else {}
+    # Work with the stored names, expanding only those that need comparing, so a merge into
+    # a large file stays fast. Old full names in the file are compressed on the way.
+    rows = {label: compress_name(name) if not is_compact(name) else name
+            for label, name in read_data(path, expand=False)} if os.path.exists(path) else {}
     added = replaced = kept = 0
     for label, name in new_rows.items():
+        stored = compress_name(name)
         old = rows.get(label)
         if old is None:
             added += 1
-        elif old == name:
+        elif old == stored:
             continue
-        elif replace or name_key(name) < name_key(old):
+        elif replace or name_key(name) < name_key(expand_name(old)):
             replaced += 1
         else:
             kept += 1
             continue
-        rows[label] = name
-    write_data(path, rows.items())
+        rows[label] = stored
+    _write_raw(path, rows.items())
     return added, replaced, kept
 
 

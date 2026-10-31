@@ -7,7 +7,10 @@ a header line `label|pretty_name`, a types line `text|text`, a blank line,
 then one row per field.
 
 - `label` is the LMFDB number field label, e.g. `2.0.3.1`.
-- `pretty_name` is the LaTeX name, without `\(` `\)`, e.g. `\Q(\sqrt{-3})`.
+- `pretty_name` is the LaTeX name, without `\(` `\)`, in a compact form to save space: `Q`, `S` and `Z`
+  for the macros `\Q`, `\sqrt` and `\zeta`, and no spaces. E.g. `Q(S{-3})` is `\Q(\sqrt{-3})`, `Q(S{1+2i})`
+  is `\Q(\sqrt{1 + 2i})` and `Q(Z_{7})^+` is `\Q(\zeta_{7})^+`. `scripts/export_lmfdb.py` writes the files
+  out with the full names, for the LMFDB.
 
 Rows are in the same order as on the LMFDB: by absolute discriminant, then discriminant sign
 (negative first), then iso number. For example `2.0.8.1` comes before `2.2.8.1`, which comes before `2.0.11.1`.

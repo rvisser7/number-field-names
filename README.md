@@ -15,11 +15,16 @@ Each file is in psycodict upload format:
 label|pretty_name
 text|text
 
-2.0.3.1|\Q(\sqrt{-3})
-2.0.4.1|\Q(\sqrt{-1})
+2.0.3.1|Q(S{-3})
+2.0.4.1|Q(S{-1})
 ```
 
-Names are stored without the surrounding `\(` `\)` and use the LMFDB's macros (such as `\Q`).
+To save space, names are stored in a compact form: `Q`, `S` and `Z` stand for the LMFDB macros
+`\Q`, `\sqrt` and `\zeta`, and there are no spaces, e.g. `Q(S{1+2i})` is `\Q(\sqrt{1 + 2i})`,
+`Q(Z_{7})^+` is `\Q(\zeta_{7})^+` and `Q(i,S[4]{2})` is `\Q(i, \sqrt[4]{2})`.
+The scripts read and write this form (`read_data` gives the full names, `write_data` stores
+the compact ones), and `scripts/export_lmfdb.py` writes the full LaTeX names, without the
+surrounding `\(` `\)`, for uploading to the LMFDB. The rest of this README writes names in full.
 A field only appears in a file if we have a name for it.
 When a field has names from more than one family, the family higher up in the table below wins
 (as in the LMFDB's `field_pretty`), e.g. `4.0.256.1` is `\Q(\zeta_{8})` rather than `\Q(\sqrt[4]{-1})`.
@@ -75,6 +80,8 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
+python3 scripts/compact_data.py        # convert data files from before the compact form (once)
+python3 scripts/export_lmfdb.py -o export --combined export/pretty_names.txt   # full names for the LMFDB
 python3 -m unittest discover tests     # run the tests (most tests need cypari2)
 python3 scripts/coverage.py --db       # how many fields are named, per degree and family
 python3 scripts/coverage.py --by-galois --degrees 3-8 --max-disc 10^8   # unnamed fields per Galois group

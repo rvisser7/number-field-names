@@ -2,8 +2,9 @@
 """Check that every data/degree<n>.txt is well formed.
 
 For each file: the header and types lines are right, every row has two columns,
-labels are valid, of degree n, sorted and unique, names are non-empty, have balanced
-brackets and no \\( \\) delimiters. Exits nonzero if anything is wrong.
+labels are valid, of degree n, sorted and unique, names are non-empty, stored in the
+compact form (no backslashes or spaces; run compact_data.py to convert older files), have
+balanced brackets and no \\( \\) delimiters. Exits nonzero if anything is wrong.
 
 Usage:
     python3 scripts/check_data.py              # check <repo>/data
@@ -17,7 +18,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from nf_names import DATA_DIR, label_key, read_data
+from nf_names import DATA_DIR, compress_name, is_compact, label_key, read_data
 
 LABEL_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)\.(\d+)$")
 FILE_RE = re.compile(r"^degree(\d+)\.txt$")
@@ -36,15 +37,24 @@ def brackets_balanced(s):
     return not stack
 
 
+def _stored_form(name):
+    """How write_data would store name (None if it cannot)."""
+    try:
+        return compress_name(name)
+    except ValueError:
+        return None
+
+
 def check_file(path, degree):
     """Return a list of error strings for one data file."""
     try:
-        rows = read_data(path)
+        rows = read_data(path, expand=False)
     except ValueError as e:
         return [str(e)]
     errors = []
     seen = set()
     prev = None
+    not_compact = 0
     for label, name in rows:
         m = LABEL_RE.match(label)
         if not m:
@@ -64,6 +74,13 @@ def check_file(path, degree):
             errors.append(f"{path}: {label} has unbalanced brackets: {name}")
         elif r"\(" in name or r"\)" in name:
             errors.append(f"{path}: {label} name should not contain \\( \\): {name}")
+        elif not is_compact(name) and _stored_form(name) != name:
+            if not not_compact:
+                first = f"{label}|{name}"
+            not_compact += 1
+    if not_compact:  # one line, as an old file has every name in the full form
+        errors.append(f"{path}: {not_compact} names are not in the compact form, e.g. {first} "
+                      f"(run scripts/compact_data.py to convert them)")
     return errors
 
 
