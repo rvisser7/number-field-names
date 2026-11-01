@@ -13,3 +13,5 @@ PYTHONPATH=~/sage-extra sage -python scripts/name_lmfdb_fields.py --degrees 4 --
 # to run all the tests:
 sage -python -m unittest discover tests -v
 
+# to check the data (e.g. all degree 3 fields):
+PYTHONPATH=~/sage-extra sage -python scripts/check_data.py --fields --source db --degrees 3
