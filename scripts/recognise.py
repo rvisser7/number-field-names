@@ -34,6 +34,9 @@ without their bounds:
     named_composita.py. Also names with three or more generators, from a Galois named subfield
     (quadratic, cyclotomic, multiquadratic, Kummer) and another named subfield, e.g.
     Q(i, \\sqrt[3]{3}, \\sqrt[4]{2}); fewer generators win.
+  * Gaussian period Q(\\zeta_f + \\zeta_f^{h_2} + ... + \\zeta_f^{h_k}), k <= MAX_PERIOD_TERMS: for each
+    degree there are finitely many (phi(f) <= k [K : Q]), listed by gaussian_period.periods,
+    and K is compared with those of its discriminant and signature, as for cyclotomic fields.
   * nested biquadratic Q(\\sqrt{A + B\\sqrt{d_1} + C\\sqrt{d_2} + D\\sqrt{d_3}}), for octics with a
     biquadratic subfield L: as for the imprimitive quartics, over the ideals and units of L
     (see nested_biquadratic_params). Every other name wins, so this only runs when there is
@@ -56,6 +59,7 @@ from dataclasses import dataclass, field
 
 from cardano import cardano_name, cardano_params, cardano_size
 from cyclotomic import conductors, cyclotomic_name, real_cyclotomic_name
+from gaussian_period import period_name, periods
 from imprimitive_quartic import quartic_name
 from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol, squarefree_part
 from nested_biquadratic import nested_biquadratic_name
@@ -69,7 +73,7 @@ from pure import pure_name
 from radical import compositum_name, kummer_name, root_symbol, zeta_symbol
 
 FAMILY_TESTS = ["cyclotomic", "real cyclotomic", "multiquadratic", "pure", "kummer",
-                "imprimitive quartic", "nested radical", "composita", "nested biquadratic",
+                "imprimitive quartic", "nested radical", "composita", "gaussian period", "nested biquadratic",
                 "nested pure", "nested quartic", "cardano cubic"]
 MAX_CANDIDATES = 10 ** 6  # radicands to sieve for one field before giving up
 # nested radicals: candidates for beta to test for one quadratic subfield before giving up. Only
@@ -79,6 +83,9 @@ MAX_NESTED_CANDIDATES = 20000  # e.g. 6^5 (about 1s), not 8^5
 # nested biquadratic: the largest ideal norm to search. Above it (only for large d_i and
 # coefficients) the name found is still right, but there may be a simpler one.
 MAX_IDEAL_NORM = 5000
+# Gaussian periods: the most terms allowed in a name (|H|, see gaussian_period.py).
+# name_lmfdb_fields.py --period-terms sets it.
+MAX_PERIOD_TERMS = 5
 # Cardano cubics: the largest number allowed in a name (they grow with the discriminant);
 # None for no bound. name_lmfdb_fields.py --cardano-bound sets it.
 MAX_CARDANO_SIZE = 100
@@ -231,6 +238,18 @@ def cyclotomic_conductor(K, real=False):
     for m, coeffs, disc_abs in _cyclotomic_list(n, real):
         if disc_abs == K.disc_abs and (coeffs == K.coeffs or is_isomorphic(coeffs, K.coeffs)):
             return m
+    return None
+
+
+def period_params(K):
+    """(f, H) with K = Q(sum_{h in H} \\zeta_f^h), |H| <= MAX_PERIOD_TERMS (see
+    gaussian_period.py), or None."""
+    if K.degree < 3 or K.r1 not in (0, K.degree):
+        return None
+    for P in periods(K.degree, MAX_PERIOD_TERMS):
+        if P.disc_abs == K.disc_abs and P.r1 == K.r1 and \
+                is_isomorphic(tuple(int(c) for c in pari.Vecrev(P.poly)), K.coeffs):
+            return P.f, P.H
     return None
 
 
@@ -1235,7 +1254,8 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
     With best_only, tests that cannot give a better name than one already found are
     skipped: nothing after a cyclotomic, real cyclotomic or multiquadratic name (those
     families win over all the radical ones), and nested radicals only below the smallest
-    radicand_size found (they rank last among the radical families), and nested biquadratic,
+    radicand_size found (they rank last among the radical families), Gaussian periods only when
+    there is no other name (they rank after the radical families), and nested biquadratic,
     nested pure, nested quartic and Cardano names (the last families) only when there is no
     other name.
     """
@@ -1273,6 +1293,10 @@ def all_names(K, families=FAMILY_TESTS, best_only=False):
         params = nested_params(K, max_size)
         if params:
             names.append(nested_name(*params))
+    if "gaussian period" in families and not (best_only and names):  # radical names win
+        params = period_params(K)
+        if params:
+            names.append(period_name(*params))
     if "nested biquadratic" in families and not (best_only and names):  # every other name wins
         params = nested_biquadratic_params(K)
         if params:

@@ -12,6 +12,7 @@ sys.path.insert(0, SCRIPTS)
 
 from cardano import cardano_name
 from cyclotomic import cyclotomic_name, real_cyclotomic_name
+from gaussian_period import periods
 from imprimitive_quartic import quartic_name
 from multiquadratic import multiquadratic_name
 from nested_biquadratic import nested_biquadratic_name
@@ -57,6 +58,9 @@ def sample_names():
             yield nested_quartic_name(a, b, c, d, 1, 2, -1)
     for u, e, d in [(1, 1, -1), (2, 1, 3), (5, 2, -3), (-2, 3, 5)]:
         yield cardano_name(u, e, d)
+    for n in [3, 4, 6, 8]:
+        for P in periods(n):
+            yield P.name
     # Named composita: two generators of other families.
     yield r"\Q(\zeta_{5}, \sqrt{2})"
     yield r"\Q(i, \sqrt[4]{3})"

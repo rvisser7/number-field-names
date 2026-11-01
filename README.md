@@ -51,6 +51,7 @@ does not depend on which script ran first.
 | Radical composita | `\Q(\sqrt[m]{a}, \sqrt[n]{b})`, $\gcd(m, n) = 1$, e.g. `\Q(\sqrt{2}, \sqrt[3]{3})` | script ready (`generate_composita.py`) |
 | Composita of named fields | `\Q(g_1, g_2)` (backward also `\Q(g_1, g_2, g_3)`), e.g. `\Q(\zeta_{5}, \sqrt{2})`, `\Q(i, \sqrt{1 + \sqrt{2}})`, `\Q(\sqrt{2}, \sqrt[4]{3})` | script ready (`generate_named_composita.py`) |
 | Nested radicals, $n \geq 3$ | `\Q(\sqrt[n]{a + b\sqrt{d}})`, e.g. `\Q(\sqrt[3]{1 + \sqrt{2}})`, `\Q(\sqrt[4]{1 + 4i})` | script ready (`generate_nested_radical.py`) |
+| Abelian fields by a Gaussian period | `\Q(\zeta_{f} + \zeta_{f}^{h_2} + \dots + \zeta_{f}^{h_k})`, the fixed field of $H = \{1, h_2, \dots, h_k\} \subset (\mathbb{Z}/f\mathbb{Z})^*$ with $f$ the conductor, e.g. `\Q(\zeta_{13} + \zeta_{13}^{5} + \zeta_{13}^{8} + \zeta_{13}^{12})`; only when the period generates the field, with at most 5 terms, and no radical name | script ready (`generate_gaussian_period.py`), all of them in degree 3 to 47 |
 | Octics over a biquadratic field | `\Q(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}})`, e.g. the quaternion field `\Q(\sqrt{6 + 2\sqrt{3} + \sqrt{6}})`; only for octics with no other name | script ready (`generate_nested_biquadratic.py`) |
 | Quadratic over a pure field, $n$ an odd prime | `\Q(\sqrt{A_0 + A_1\sqrt[n]{m_1} + \dots})`, e.g. `\Q(\sqrt{1 + \sqrt[3]{2}})`, `\Q(\sqrt{-1 + 2\sqrt[3]{18}})`; only for fields with no other name | script ready (`generate_nested_pure.py`) |
 | Octics over an imprimitive quartic | `\Q(\sqrt{a + b\sqrt{D} + c\sqrt{A + B\sqrt{D}} + d\sqrt{D}\sqrt{A + B\sqrt{D}}})`, e.g. `\Q(\sqrt{1 + \sqrt{1 + \sqrt{2}}})`; only for octics with no other name | script ready (`generate_nested_quartic.py`) |
@@ -64,7 +65,7 @@ does not depend on which script ran first.
   against every family. For cyclotomic, real cyclotomic, multiquadratic, pure, Kummer and imprimitive
   quartic fields, nested radicals, octics over a biquadratic or imprimitive quartic field and
   quadratic extensions of pure fields this is complete, with no bound (Cardano cubics up to a
-  size, `--cardano-bound`); composita come from named
+  size, `--cardano-bound`, and Gaussian periods up to `--period-terms` terms); composita come from named
   subfields, including ones with three or more generators such as `\Q(\sqrt{2}, \sqrt{3}, \sqrt[3]{5})`.
   For example
   `sage -python scripts/name_lmfdb_fields.py --degrees 3-6 --max-disc 10^8`.

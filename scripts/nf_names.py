@@ -164,6 +164,9 @@ FAMILIES = [
     # Anything else of the form \Q(g_1, g_2), as written by named_composita.py
     ("compositum", re.compile(r"^\\Q\(.+, .+\)$")),
     ("nested radical", re.compile(r"^\\Q\(\\sqrt\[\d+\]\{-?\d+ \+ \d*(i|\\sqrt\{-?\d+\})\}\)$")),
+    # Gaussian periods \Q(\zeta_{f} + \zeta_{f}^{h_2} + ...), as gaussian_period.py writes them
+    ("gaussian period", _Checked(r"^\\Q\(\\zeta_\{(\d+)\}( \+ \\zeta_\{\1\}\^\{\d+\})+\)$",
+                                 lambda m: parse_period(m[0]) is not None)),
     # \Q(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}}), as nested_biquadratic.py writes them
     ("nested biquadratic",
      _Checked(r"^\\Q\(\\sqrt\{(-?\d+|-?\d*(?:i|\\sqrt\{-?\d+\}))( [+-] \d*(?:i|\\sqrt\{-?\d+\}))+\}\)$",
@@ -410,6 +413,28 @@ def parse_nested_quartic(name):
     return tuple(coeffs) + (A, B, D)
 
 
+def period_key(f, H):
+    # as in gaussian_period.py: the fewest terms, then the smallest f, then the exponents
+    return (len(H), f, tuple(sorted(H)))
+
+
+def parse_period(name):
+    """(f, H) from a name written by gaussian_period.py (exponents increasing, starting at 1,
+    closed under multiplication mod f), or None."""
+    m = re.match(r"^\\Q\(\\zeta_\{(\d+)\}((?: \+ \\zeta_\{\d+\}\^\{\d+\})+)\)$", name)
+    if not m:
+        return None
+    f = int(m[1])
+    terms = re.findall(r" \+ \\zeta_\{(\d+)\}\^\{(\d+)\}", m[2])
+    if any(int(g) != f for g, _ in terms):
+        return None
+    H = (1,) + tuple(int(h) for _, h in terms)
+    if list(H) != sorted(set(H)) or H[-1] >= f or any(math.gcd(h, f) != 1 for h in H) \
+            or any(a * b % f not in H for a in H for b in H):
+        return None
+    return f, H
+
+
 def cardano_key(u, e, d):
     # as in cardano.py: the smallest radicand u + e\\sqrt{d}
     return (max(abs(u), abs(e)), abs(e), abs(u), abs(d), d < 0)
@@ -434,6 +459,8 @@ def _family_key(name, family):
         return nested_quartic_key(*parse_nested_quartic(name))
     if family == "cardano cubic":
         return cardano_key(*parse_cardano(name))
+    if family == "gaussian period":
+        return period_key(*parse_period(name))
     if family == "imprimitive quartic":
         return _nested_key(*_abd(_QUARTIC_RE.match(inner), 1))
     if family == "nested radical":

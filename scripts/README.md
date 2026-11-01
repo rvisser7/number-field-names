@@ -112,6 +112,16 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `generate_cardano.py`: looks these up in the LMFDB and merges them into `data/degree3.txt`, e.g.
   `python3 scripts/generate_cardano.py --bound 100 --max-size 100 --source db` (runs over $0 < u \leq$ `--bound` and
   $0 < |k| \leq$ `--k-bound`, about 7000 polynomials a second).
+- `gaussian_period.py`: abelian fields named by a Gaussian period. By Kronecker-Weber an abelian field $K$ is
+  $\mathbb{Q}(\zeta_f)^H$ for its conductor $f$ and a subgroup $H$ of $(\mathbb{Z}/f\mathbb{Z})^*$, and $\eta = \sum_{h \in H} \zeta_f^h$ is in $K$; when
+  it generates $K$ we name $K$ by it, the exponents in increasing order, e.g. 3.3.169.1 is
+  `\Q(\zeta_{13} + \zeta_{13}^{5} + \zeta_{13}^{8} + \zeta_{13}^{12})`. The name has $|H|$ terms, so only $|H| \leq 5$ is used (and
+  not $H = \{\pm 1\}$, the real cyclotomic fields). Then $\varphi(f) \leq 5 [K : \mathbb{Q}]$, so each degree has finitely many: 1523 in degree
+  3 to 47 (one cubic, 27 quartics, 23 sextics, 69 octics, ...). The minimal polynomial of $\eta$ is the product over its
+  conjugates, computed numerically, rounded and checked exactly in $\mathbb{Q}(\zeta_f)$. Radical names win over these
+  (e.g. `\Q(\zeta_{5}, \sqrt{-7})`, `\Q(\sqrt{-13 + 2\sqrt{13}})`); they win over the nested families and Cardano cubics.
+- `generate_gaussian_period.py`: looks these up in the LMFDB and merges them into the data files, e.g.
+  `python3 scripts/generate_gaussian_period.py --degrees 3-47 --source db` (`--max-terms` for more terms).
 - `coverage.py`: counts the named fields per degree and per family; with `--db` also the LMFDB fields of each degree,
   to show what fraction has a name. With `--by-galois --degrees 3-8` it goes through the LMFDB fields instead and
   lists, per Galois group, how many fields there are and how many are named, most unnamed first, with the smallest
@@ -136,6 +146,8 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
   field $F$, and of an imprimitive quartic $F$: the same, over the ideals and units of $F$ (and its automorphisms).
   Cardano cubics: the trace zero elements of $\mathcal{O}_K$ of small $T_2$ norm (`qfminim`), each scaled to a polynomial
   $x^3 - 3kx - 2u$; `--cardano-bound` sets the largest number allowed in a name (0 for none).
+  Gaussian periods: $K$ is compared with the fields of `gaussian_period.py` of its degree, discriminant and
+  signature; `--period-terms` sets the most terms allowed (5).
   Multiquadratic: the quadratic subfields. Composita: pairs of named subfields, and a Galois named subfield
   (quadratic, cyclotomic, multiquadratic or Kummer) with another named subfield, giving names like
   $\mathbb{Q}(i, \sqrt[3]{3}, \sqrt[4]{2})$; fewer generators win.

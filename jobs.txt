@@ -9,6 +9,7 @@
 # nested radicals, octics over a biquadratic or imprimitive quartic field and quadratic extensions of pure fields, and finds composita from named subfields, so it can replace most of the jobs above.
 # (split big degrees with --shard )
 # Cubics with no other name get a Cardano name when every number in it is at most --cardano-bound (100).
+# Abelian fields with no other name get a Gaussian period name with at most --period-terms (5) terms.
 name_lmfdb_fields.py --degrees 3 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 4 --only-unnamed --batch 100
 name_lmfdb_fields.py --degrees 5 --only-unnamed --batch 100
@@ -111,6 +112,9 @@ generate_nested_pure.py --n 5 --bound 1 --m-bound 20    # about 0.6s per m (15 o
 
 # Octics over an imprimitive quartic Q(sqrt(a + b*sqrt(D) + c*sqrt(A + B*sqrt(D)) + d*sqrt(D)*sqrt(A + B*sqrt(D))))
 generate_nested_quartic.py --bound 2 --quartic-bound 5    # about 0.5s per quartic field (211 of them)
+
+# Abelian fields by a Gaussian period Q(zeta_f + zeta_f^h2 + ...), at most 5 terms: complete for each degree
+generate_gaussian_period.py --degrees 3-47    # about 3 min of PARI (1523 fields)
 
 # Cubics by Cardano's formula Q(cbrt(u + e*sqrt(d)) + cbrt(u - e*sqrt(d))), only names with every number <= --max-size
 generate_cardano.py --bound 1000 --k-bound 200 --max-size 100   # about 1 min of PARI

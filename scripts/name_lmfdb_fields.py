@@ -6,7 +6,8 @@ parameters up to a bound, it goes through the LMFDB fields of the given degrees 
 decides which families it belongs to. For cyclotomic, real cyclotomic, multiquadratic, pure,
 Kummer, imprimitive quartic, nested radical, nested biquadratic and nested quartic (octics),
 and nested pure (quadratic over pure) fields the answer is complete, with no bound. Cubic
-fields with no other name get a Cardano name when it is small enough (--cardano-bound)
+fields with no other name get a Cardano name when it is small enough (--cardano-bound), and
+abelian fields with no other name a Gaussian period name with at most --period-terms terms
 (nested radicals with too many candidates are skipped, see recognise.py). Composita come from
 named subfields, with two or more generators.
 
@@ -145,8 +146,12 @@ def main():
     parser.add_argument("--cardano-bound", type=int, default=recognise.MAX_CARDANO_SIZE,
                         help="largest number in a Cardano cubic name (default %(default)s; 0 for "
                              "no bound), see cardano.py")
+    parser.add_argument("--period-terms", type=int, default=recognise.MAX_PERIOD_TERMS,
+                        help="most terms in a Gaussian period name (default %(default)s), see "
+                             "gaussian_period.py")
     args = parser.parse_args()
     recognise.MAX_CARDANO_SIZE = args.cardano_bound or None
+    recognise.MAX_PERIOD_TERMS = args.period_terms
 
     families = [f.replace("_", " ") for f in args.families.split(",")]
     unknown = set(families) - set(FAMILY_TESTS)

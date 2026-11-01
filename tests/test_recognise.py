@@ -13,6 +13,7 @@ try:
     from nested_pure import nested_pure_fields, nested_pure_name
     from nested_quartic import nested_quartic_fields, nested_quartic_name
     from cardano import cardano_fields, cardano_name
+    from gaussian_period import period_fields, period_name
     from nested_radical import nested_name, nested_radical_fields
     from named_composita import named_composita_fields
     from pari_fields import make_field, pari, polredabs_coeffs
@@ -22,7 +23,7 @@ try:
                            from_coeffs, from_label, kummer_params, multiquadratic_basis,
                            nested_biquadratic_params, nested_params, nested_pure_params,
                            nested_quartic_params, pure_radicand, quartic_params,
-                           cardano_cubic_params)
+                           cardano_cubic_params, period_params)
 except SystemExit:  # cypari2 not installed
     best_name = None
 
@@ -94,6 +95,11 @@ class TestRecognise(unittest.TestCase):
         self.assertEqual(cardano_cubic_params(field("x^3 - x - 1"), None), (44, 12, 69))
         self.assertIsNone(cardano_cubic_params(field("x^3 + x + 1"), 100))  # needs 108
 
+    def test_gaussian_period(self):
+        self.check(period_fields(range(3, 9)), lambda K: period_name(*period_params(K)))
+        self.assertIsNone(period_params(field("x^3 - x^2 - 2*x + 1")))  # \Q(\zeta_{7})^+
+        self.assertIsNone(period_params(field("x^3 - 2")))              # not abelian
+
     def test_kummer(self):
         self.check(kummer_fields([3, 4], 10), lambda K: kummer_name(*kummer_params(K)))
 
@@ -140,6 +146,9 @@ class TestRecognise(unittest.TestCase):
             "((x^2 - 1)^2 - 1)^2 - 2": r"\Q(\sqrt{1 + \sqrt{1 + \sqrt{2}}})",
             "x^3 - 3*x - 4": r"\Q(\sqrt[3]{2 + \sqrt{3}} + \sqrt[3]{2 - \sqrt{3}})",
             "polcompositum(x^3 - 2, x^5 - 3)[1]": r"\Q(\sqrt[3]{2}, \sqrt[5]{3})",
+            "x^3 + x^2 - 4*x + 1": r"\Q(\zeta_{13} + \zeta_{13}^{5} + \zeta_{13}^{8} + \zeta_{13}^{12})",  # 3.3.169.1
+            "x^6 - x^5 + 2*x^4 + 8*x^3 - x^2 - 5*x + 7": r"\Q(\zeta_{19} + \zeta_{19}^{7} + \zeta_{19}^{11})",
+            "polcompositum(polcyclo(5), x^2 + 7)[1]": r"\Q(\zeta_{5}, \sqrt{-7})",  # not a Gaussian period
         }
         for poly, name in examples.items():
             self.assertEqual(best_name(field(poly)), name, poly)
