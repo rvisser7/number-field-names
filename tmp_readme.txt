@@ -7,6 +7,9 @@ PYTHONPATH=~/sage-extra sage -python scripts/name_lmfdb_fields.py --degrees 3 --
 # to generate field labels for degreee 4, only for Galois group 4T2
 PYTHONPATH=~/sage-extra sage -python scripts/name_lmfdb_fields.py --degrees 4 --galois 4T2 --source db --only-unnamed --batch 100
 
+# only generate 4T3 from mindisc onwards
+PYTHONPATH=~/sage-extra sage -python scripts/name_lmfdb_fields.py --degrees 4 --galois 4T3 --source db --only-unnamed --batch 1000 --min-disc 28000000
+
 # to run all the tests:
 sage -python -m unittest discover tests -v
 
