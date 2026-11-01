@@ -8,8 +8,9 @@ e.g. the quaternion field Q(\\sqrt{(2 + \\sqrt{2})(3 + \\sqrt{3})}) = Q(\\sqrt{6
 Conventions:
 
   * d_1, d_2 is the greedy basis of L (as in multiquadratic.py, so |d_1| <= |d_2|), and d_3 is
-    the squarefree part of d_1 d_2; \\sqrt{-1} is written i. So \\sqrt{d_1}\\sqrt{d_2} = g\\sqrt{d_3}
-    with d_1 d_2 = g^2 d_3, and the coefficient D is that of \\sqrt{d_3}.
+    the squarefree part of d_1 d_2; \\sqrt{-1} is written i. Every \\sqrt{d} is the principal
+    root (i\\sqrt{|d|} for d < 0), so \\sqrt{d_1}\\sqrt{d_2} = g\\sqrt{d_3} with d_1 d_2 = g^2 d_3, and
+    g < 0 when d_1, d_2 are both negative (see sqrt_product). D is the coefficient of \\sqrt{d_3}.
   * beta = A + B\\sqrt{d_1} + C\\sqrt{d_2} + D\\sqrt{d_3} must not lie in a quadratic subfield of
     L, so at least two of B, C, D are nonzero (otherwise Q(\\sqrt{beta}) has degree 4).
   * Of the (A, B, C, D) giving the same field (beta times squares of L, and the conjugates of
@@ -55,11 +56,18 @@ def is_valid(A, B, C, D):
     return sum(1 for c in (B, C, D) if c) >= 2
 
 
+def sqrt_product(d1, d2):
+    """g with \\sqrt{d_1}\\sqrt{d_2} = g\\sqrt{d_3}, for the principal square roots: d1 d2 = g^2 d3,
+    and g < 0 when d1 and d2 are both negative (\\sqrt{-2}\\sqrt{-3} = -\\sqrt{6})."""
+    d3 = squarefree_part(d1 * d2)
+    g = int(pari.sqrtint(d1 * d2 // d3))
+    return -g if d1 < 0 and d2 < 0 else g
+
+
 def nested_biquadratic_poly(A, B, C, D, d1, d2):
     """The minimal polynomial (if irreducible) of \\sqrt{beta}, of degree 8."""
-    d3 = squarefree_part(d1 * d2)
-    g = pari.sqrtint(d1 * d2 // d3)
-    f = pari(f"x^2 - ({A}) - ({B})*s - ({C})*t - ({D})*s*t/{g}")
+    g = sqrt_product(d1, d2)
+    f = pari(f"x^2 - ({A}) - ({B})*s - ({C})*t - ({D})*s*t/({g})")
     f = pari.polresultant(f, pari(f"s^2 - ({d1})"), pari("s"))
     return pari.polresultant(f, pari(f"t^2 - ({d2})"), pari("t"))
 

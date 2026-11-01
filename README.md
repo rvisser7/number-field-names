@@ -73,7 +73,9 @@ does not depend on which script ran first.
 Both give the same name for a field (the tests check this), and both merge with `name_key`.
 
 Every name other than those read off the label should be certified by checking that the
-polynomial it describes defines the same field as the LMFDB polynomial (e.g. with PARI's `nfisisom`).
+polynomial it describes defines the same field as the LMFDB polynomial. `check_data.py --fields --source db`
+does this, reading each name as LaTeX (`scripts/name_field.py`, independently of the scripts that wrote it)
+and comparing the field with the LMFDB polynomial of its label with `nfisisom`.
 
 ## Scripts
 
@@ -81,6 +83,7 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```
 python3 scripts/check_data.py          # validate every data/degree<n>.txt
+sage -python scripts/check_data.py --fields --source db   # check each name gives the field of its label
 python3 scripts/compact_data.py        # convert data files from before the compact form (once)
 python3 scripts/export_lmfdb.py -o export --combined export/pretty_names.txt   # full names for the LMFDB
 python3 -m unittest discover tests     # run the tests (most tests need cypari2)

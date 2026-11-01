@@ -71,7 +71,7 @@ def test_literals():
     """Every name written out in the other tests and the scripts."""
     root = os.path.dirname(SCRIPTS)
     for path in glob.glob(os.path.join(root, "tests", "*.py")) + glob.glob(os.path.join(SCRIPTS, "*.py")):
-        if os.path.basename(path) == "test_compact.py":
+        if os.path.basename(path) in ("test_compact.py", "test_name_field.py"):  # (unreadable names on purpose)
             continue
         with open(path) as f:
             for name in re.findall(r'r"(\\Q[^"%]*)"', f.read()):

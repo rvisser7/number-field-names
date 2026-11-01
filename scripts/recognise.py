@@ -62,7 +62,7 @@ from cyclotomic import conductors, cyclotomic_name, real_cyclotomic_name
 from gaussian_period import period_name, periods
 from imprimitive_quartic import quartic_name
 from multiquadratic import multiquadratic_name, order_key, span, sqrt_symbol, squarefree_part
-from nested_biquadratic import nested_biquadratic_name
+from nested_biquadratic import nested_biquadratic_name, sqrt_product
 from nested_pure import nested_pure_name
 from nested_quartic import nested_quartic_name
 from nested_radical import nested_name
@@ -628,14 +628,14 @@ _BNF4 = {}
 
 def _bnf_biquadratic(d1, d2):
     """(bnf, (s1, s2, s3), (d1, d2, d3)) for L = Q(sqrt(d1), sqrt(d2)) = Q(w), w = s1 + s2,
-    with s_i = sqrt(d_i) as Mods and s3 = s1 s2 / g, where d1 d2 = g^2 d3."""
+    with s_i = sqrt(d_i) as Mods and s3 = s1 s2 / g, where g = sqrt_product(d1, d2) (so that s3
+    is the principal sqrt(d3) when s1, s2 are the principal roots)."""
     if (d1, d2) not in _BNF4:
         f = pari(f"(w^2 - ({d1}) - ({d2}))^2 - 4 * ({d1}) * ({d2})")
         s1 = pari.Mod(pari(f"(w^2 + ({d1}) - ({d2})) / (2 * w)"), f)
         s2 = pari.Mod(pari("w"), f) - s1
         d3 = squarefree_part(d1 * d2)
-        g = int(pari.sqrtint(d1 * d2 // d3))
-        _BNF4[(d1, d2)] = (pari.bnfinit(f, 1), (s1, s2, s1 * s2 / g), (d1, d2, d3))
+        _BNF4[(d1, d2)] = (pari.bnfinit(f, 1), (s1, s2, s1 * s2 / sqrt_product(d1, d2)), (d1, d2, d3))
     return _BNF4[(d1, d2)]
 
 
@@ -832,8 +832,7 @@ def nested_biquadratic_params(K):
         else:
             continue
         gamma = theta - pari.Mod(t, fy)
-        g = int(pari.sqrtint(d1 * d2 // d3))
-        beta = _biquadratic_coeffs(gamma ** 2, (s1, s2, s1 * s2 / g), ds, degree=8)
+        beta = _biquadratic_coeffs(gamma ** 2, (s1, s2, s1 * s2 / sqrt_product(d1, d2)), ds, degree=8)
         p = _simplest_biquadratic(beta, d1, d2)
         if p and (best is None or nested_biquadratic_key(*p) < nested_biquadratic_key(*best)):
             best = p

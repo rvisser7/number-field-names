@@ -15,6 +15,13 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `pipeline.py`: the shared end of the newer `generate_*.py` scripts (LMFDB lookup, merge, summary).
 - `check_data.py`: checks every `data/degree<n>.txt` is well formed: right header, one row per label,
   labels of the right degree, in LMFDB order, no duplicates, names in the compact form, and balanced brackets in each name.
+  With `--fields` (needs cypari2) it also checks that each name describes the field of its label: the name is read as
+  LaTeX by `name_field.py` and its field must have the label's degree, signature and $|\mathrm{disc}|$, and with `--source db`
+  be isomorphic to the LMFDB polynomial of the label. `--degrees` and `--shard i/k` split the work, and `--drop-wrong` removes
+  the rows whose name gives another field, e.g. `sage -python scripts/check_data.py --fields --source db --degrees 8 --drop-wrong`.
+- `name_field.py`: the field a name describes, read as LaTeX independently of the scripts that wrote it (`name_poly`).
+  Roots are principal: $\sqrt{d} = i\sqrt{|d|}$ for $d < 0$, $\sqrt[n]{a}$ is real for real $a$ and odd $n$, $\zeta_n = e^{2\pi i/n}$, so
+  $\sqrt{-2}\sqrt{-3} = -\sqrt{6}$. The field is built exactly as a tower of PARI fields, each root chosen by its numerical value.
 - `compact_data.py`: converts data files written before the compact form, in place (any merge also converts
   the file it writes, and running it again changes nothing).
 - `export_lmfdb.py`: writes the data with the full LaTeX names for uploading to the LMFDB, one file per degree
@@ -78,7 +85,7 @@ either `pip install cypari2`, or run them with `sage -python` since SageMath shi
 - `nested_biquadratic.py`: the octic fields $\mathbb{Q}(\sqrt{A + B\sqrt{d_1} + C\sqrt{d_2} + D\sqrt{d_3}})$, quadratic
   extensions of a biquadratic field $L = \mathbb{Q}(\sqrt{d_1}, \sqrt{d_2})$ (every octic with a biquadratic subfield is
   one), with $|A|, |B|, |C|, |D| \leq N$ and $|d_1|, |d_2| \leq N'$. $d_1, d_2$ is the greedy basis of $L$ and $d_3$ the
-  squarefree part of $d_1 d_2$; at least two of $B, C, D$ are nonzero. Each field gets its simplest parameters: smallest
+  squarefree part of $d_1 d_2$, with principal roots (so $\sqrt{d_1}\sqrt{d_2} = -g\sqrt{d_3}$ when $d_1, d_2 < 0$); at least two of $B, C, D$ are nonzero. Each field gets its simplest parameters: smallest
   $\max(|A|, |B|, |C|, |D|)$, then $|D|$, $|C|$, $|B|$, $|A|$, then the smallest basis, then $B, C \geq 0$ (conjugating flips
   the signs of two of $B, C, D$), $A \geq 0$, $D \geq 0$. Every other family's name wins over these.
 - `generate_nested_biquadratic.py`: looks these up in the LMFDB and merges them into `data/degree8.txt`, e.g.
